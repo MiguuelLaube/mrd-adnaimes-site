@@ -97,8 +97,8 @@ export default function Editor({ inicial }: { inicial: Site }) {
       <section className="card">
         <h2>Equipamentos e regras da calculadora</h2>
         <p className="ajuda">
-          Itens com o mesmo <b>grupo</b> são alternativos: o cliente escolhe um (ex.: <i>largura</i> para os andaimes,
-          <i> base</i> para sapatas ou rodinhas). Deixe o grupo vazio para itens independentes.
+          Itens com o mesmo <b>grupo</b> somam para um mínimo comum e o cliente pode misturar (ex.: <i>largura</i> para os painéis de 1 m e 1,5 m,
+          <i> base</i> para sapatas e rodinhas). Deixe o grupo vazio para itens independentes.
         </p>
         {site.itens.map((it, i) => (
           <div key={i} className="item-ed">

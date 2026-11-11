@@ -120,18 +120,17 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
 .stepper-ctl output { text-align: center; font: 800 1.9rem/1 var(--f-titulo), system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .stepper-ctl output small { font-size: 1.1rem; margin-left: 1px; }
 
-.segmento { border: 0; margin: 0; padding: 0; min-width: 0; }
-.segmento legend { font-size: .9rem; color: var(--suave); margin-bottom: 6px; padding: 0; }
-.segmento div { display: flex; background: var(--concreto); border-radius: 10px; padding: 4px; gap: 4px; }
-.segmento label {
-  flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px;
-  padding: 0 8px; border-radius: 7px; font-weight: 600; cursor: pointer; text-align: center; color: var(--suave);
-}
-.segmento label.on { background: var(--aco); color: #fff; box-shadow: inset 0 -3px 0 var(--amarelo); }
-.segmento input { position: absolute; opacity: 0; pointer-events: none; }
-.segmento label:has(input:focus-visible) { outline: 3px solid var(--amarelo); outline-offset: 1px; }
 
 .lista-titulo { font-size: 1.25rem; margin-top: 6px; }
+.torre .sem-base { stroke-dasharray: 3 3; stroke: var(--galvanizado); }
+.grupo { border: 1.5px solid var(--linha); border-radius: 12px; padding: 12px 14px 4px; }
+.grupo-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.grupo-topo h4 { margin: 0; font-size: 1rem; font-weight: 700; }
+.grupo-topo p { margin: 2px 0 0; font-size: .85rem; color: var(--suave); }
+.grupo-status { flex-shrink: 0; font-size: .85rem; font-weight: 700; padding: 6px 10px; border-radius: 999px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.grupo-status.ok { background: #e6f4ea; color: #146c35; }
+.grupo-status.falta { background: #fde8e8; color: var(--amarelo); }
+.grupo .lista li:last-child { border-bottom: 0; }
 .lista { list-style: none; margin: 0; padding: 0; }
 .lista li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; border-bottom: 1px solid var(--linha); }
 .lista li:last-child { border-bottom: 0; }
