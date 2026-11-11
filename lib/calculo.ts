@@ -145,8 +145,27 @@ function tentativa(itens: Item[], qtd: Qtd, it: Item, d: number, minimo: number,
       return outro ? { ...qtd, [outro.id]: qtd[outro.id] - 1, [it.id]: (qtd[it.id] ?? 0) + 1 } : qtd;
     }
   }
-  const novo = { ...qtd, [it.id]: passo(it, qtd[it.id] ?? 0, d, minimo, regras) };
+  let novo = { ...qtd, [it.id]: passo(it, qtd[it.id] ?? 0, d, minimo, regras) };
   if (!ehPainel(it)) return novo;
+  // Começar a usar uma largura numa torre que só tinha a outra: em vez de empilhar (impossível montar),
+  // converte para torre alternada com a mesma altura, trocando pares da outra largura por esta.
+  if (d > 0 && (qtd[it.id] ?? 0) === 0 && !montar(itens, novo, torres).valida) {
+    const outros = itens.filter((i) => ehPainel(i) && i.id !== it.id && (qtd[i.id] ?? 0) >= 2);
+    const totalPares = somaDe(itens.filter(ehPainel), qtd) / 2;
+    for (let x = 1; x <= totalPares && outros.length; x++) {
+      const tentativa: Qtd = { ...qtd, [it.id]: 2 * x };
+      let tira = x;
+      for (const o of outros) {
+        const t = Math.min(tira, Math.floor((tentativa[o.id] ?? 0) / 2));
+        tentativa[o.id] -= 2 * t;
+        tira -= t;
+      }
+      if (tira === 0 && montar(itens, tentativa, torres).valida) {
+        novo = tentativa;
+        break;
+      }
+    }
+  }
   // painéis mudam a altura: as travessas acompanham
   return acompanhar(itens, qtd, novo, { niveis: niveisDe(itens, qtd, torres), torres }, { niveis: niveisDe(itens, novo, torres), torres });
 }
@@ -155,7 +174,7 @@ function tentativa(itens: Item[], qtd: Qtd, it: Item, d: number, minimo: number,
 function paineisValidos(itens: Item[], q: Qtd, torres: number, regras: Regras) {
   const m = montar(itens, q, torres);
   const total = somaDe(itens.filter(ehPainel), q);
-  return m.altura <= regras.alturaMaxima && total >= minimoGrupo(itens, "largura", 0, torres, regras);
+  return m.valida && m.altura <= regras.alturaMaxima && total >= minimoGrupo(itens, "largura", 0, torres, regras);
 }
 
 /**
@@ -183,6 +202,7 @@ export function statusGrupo(itens: Item[], grupo: string, qtd: Qtd, torres: numb
   const total = somaDe(its, qtd);
   if (total < min) return { ok: false, texto: `Faltam ${min - total}` };
   if (grupo === "largura") {
+    if (!m.valida) return { ok: false, texto: "Não intercala" };
     const pouco = its.find((i) => (qtd[i.id] ?? 0) > 0 && (qtd[i.id] ?? 0) < regras.minimoPorTamanho);
     if (pouco) return { ok: false, texto: `Mín. ${regras.minimoPorTamanho} de cada` };
     if (m.sobra.length) return { ok: false, texto: `Sobram ${m.sobra.map((s) => `${s.paineis} de ${metros(s.largura)} m`).join(" e ")}` };
@@ -192,10 +212,19 @@ export function statusGrupo(itens: Item[], grupo: string, qtd: Qtd, torres: numb
   return { ok: true, texto: `${total} de ${min} ✓` };
 }
 
-/** Dá para ter esta quantidade de torres? (1 a 20; ao somar, a torre nova copia a primeira) */
-export function podeMudarTorres(torres: number, d: number) {
+/** Dá para ter esta quantidade de torres? (1 a 20, e todas as torres continuam montáveis) */
+export function podeMudarTorres(itens: Item[], qtd: Qtd, torres: number, d: number, regras: Regras = SEM_REGRAS) {
   const n = torres + d;
-  return n >= 1 && n <= 20;
+  if (n < 1 || n > 20) return false;
+  const q = mudarTorres(itens, qtd, torres, n, regras);
+  return montar(itens, q, n).valida && montar(itens, q, n).altura <= regras.alturaMaxima;
+}
+
+/** Por que o + dos painéis está travado. */
+export function motivoPainel(itens: Item[], qtd: Qtd, it: Item, torres: number, regras: Regras = SEM_REGRAS) {
+  const t = tentativa(itens, qtd, it, 1, 0, torres, regras);
+  if (montar(itens, t, torres).altura > regras.alturaMaxima) return `Altura máxima: ${regras.alturaMaxima} m`;
+  return "Para intercalar, adicione o outro tamanho";
 }
 
 /**

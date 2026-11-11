@@ -37,6 +37,8 @@ export type Montagem = {
   sobra: { largura: number; paineis: number }[];
   /** Pranchas pedidas que não têm nível com vão do tamanho delas (ou não cabem mais). */
   semLugar: number;
+  /** Dá para montar? (toda torre mista precisa alternar as larguras nível a nível) */
+  valida: boolean;
 };
 
 export type Parte =
@@ -90,7 +92,7 @@ function planejar(pares: Map<number, number>, T: number, padrao: number) {
     memoria.set(chave, r);
   }
   // cópia: quem usa o plano não pode alterar o que está guardado
-  return { torres: r.torres.map((t) => ({ ...t, niveis: [...t.niveis] })), sobra: new Map(r.sobra) };
+  return { torres: r.torres.map((t) => ({ ...t, niveis: [...t.niveis] })), sobra: new Map(r.sobra), valida: r.valida };
 }
 
 function planejarSemMemoria(pares: Map<number, number>, T: number, padrao: number) {
@@ -98,40 +100,48 @@ function planejarSemMemoria(pares: Map<number, number>, T: number, padrao: numbe
   const L = larguras[0] ?? padrao;
   const S = larguras[larguras.length - 1] ?? padrao;
   const total = [...pares.values()].reduce((s, v) => s + v, 0);
+  const a = larguras.length >= 2 ? pares.get(L) ?? 0 : 0; // pares da maior largura (se houver mistura)
 
-  // 1) alturas iguais: total de pares dividido pelas torres (as primeiras ganham a sobra de 1 nível)
+  // alturas iguais: total de pares dividido pelas torres (as primeiras ganham a sobra de 1 nível)
   const alturas = Array.from({ length: T }, (_, t) => Math.floor(total / T) + (t < total % T ? 1 : 0));
 
-  // 2) cada largura se espalha pelas torres, uma por vez, até a altura de cada uma
-  const conta = alturas.map(() => new Map<number, number>());
-  const livre = [...alturas];
-  for (const w of larguras) {
-    let resta = pares.get(w) ?? 0;
-    for (let t = 0; resta > 0; t = (t + 1) % T) {
-      if (livre.every((x) => x === 0)) break;
-      if (livre[t] === 0) continue;
-      conta[t].set(w, (conta[t].get(w) ?? 0) + 1);
-      livre[t]--;
-      resta--;
+  // Cada torre é pura (0 ou h pares da maior largura) ou alternada (metade de cada, diferença de no máximo 1).
+  // Procura uma divisão que use exatamente os "a" pares da maior largura, preferindo torres alternadas.
+  const passos: Map<number, { antes: number; nL: number }>[] = [new Map([[0, { antes: -1, nL: 0 }]])];
+  for (let t = 0; t < T; t++) {
+    const h = alturas[t];
+    const opcoes = [...new Set([Math.floor(h / 2), Math.ceil(h / 2), 0, h])];
+    const prox = new Map<number, { antes: number; nL: number }>();
+    for (const soma of passos[t].keys()) {
+      for (const nL of opcoes) {
+        const ns = soma + nL;
+        if (ns <= a && !prox.has(ns)) prox.set(ns, { antes: soma, nL });
+      }
+    }
+    passos.push(prox);
+  }
+  const valida = passos[T].has(a);
+  const porTorre: number[] = Array(T).fill(0);
+  if (valida) {
+    for (let t = T, soma = a; t > 0; t--) {
+      const p = passos[t].get(soma)!;
+      porTorre[t - 1] = p.nL;
+      soma = p.antes;
     }
   }
 
-  // 3) dentro da torre: a largura com menos pares se espalha por igual entre a outra,
-  //    sempre intercalada (nunca na ponta quando dá para ficar no meio)
-  const torres: TorrePlano[] = conta.map((c, t) => {
-    const n = alturas[t];
-    const nL = c.get(L) ?? 0;
-    const nS = n - nL;
-    const [poucos, muitos, m] = nL <= nS ? [L, S, nL] : [S, L, nS];
-    const niveis: number[] = Array(n).fill(muitos);
-    // posições centradas: com 1 de 3 fica no meio (1 / 1,5 / 1); com 2 de 4, alterna (1 / 1,5 / 1 / 1,5)
-    for (let i = 0; i < m; i++) niveis[Math.floor(((i + 0.5) * n) / m)] = poucos;
-    const misto = nL > 0 && nS > 0;
-    const w = nL === n ? L : S;
-    return { niveis, frente: misto ? L : w, fundo: misto ? S : w };
+  const torres: TorrePlano[] = alturas.map((n, t) => {
+    const nL = porTorre[t];
+    if (nL === 0 || nL === n) {
+      const w = nL === n && n > 0 ? L : S;
+      return { niveis: Array(n).fill(w), frente: w, fundo: w };
+    }
+    // alterna; quem tem um par a mais começa embaixo (empate: 1 m embaixo)
+    const [primeira, segunda] = nL > n - nL ? [L, S] : [S, L];
+    return { niveis: Array.from({ length: n }, (_, k) => (k % 2 === 0 ? primeira : segunda)), frente: L, fundo: S };
   });
 
-  return { torres, sobra: new Map<number, number>() };
+  return { torres, sobra: new Map<number, number>(), valida };
 }
 
 /** Transforma as quantidades da lista no que cada torre tem montado. */
@@ -191,7 +201,7 @@ export function montar(itens: Item[], qtd: Record<string, number>, torres: numbe
   }));
   const alturas = plano.torres.map((t) => t.niveis.length);
   const sobra = [...plano.sobra.entries()].filter(([, p]) => p > 0).sort((a, b) => a[0] - b[0]).map(([largura, p]) => ({ largura, paineis: p * 2 }));
-  return { altura: Math.max(0, ...alturas), alturas, niveisTotal: alturas.reduce((s, h) => s + h, 0), torres: lista.slice(0, VISIVEIS), total: torres, sobra, semLugar };
+  return { altura: Math.max(0, ...alturas), alturas, niveisTotal: alturas.reduce((s, h) => s + h, 0), torres: lista.slice(0, VISIVEIS), total: torres, sobra, semLugar, valida: plano.valida };
 }
 
 type Ponto3 = [number, number, number]; // [f, y, d]

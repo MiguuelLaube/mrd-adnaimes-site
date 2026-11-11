@@ -3,11 +3,11 @@ import { useMemo, useState } from "react";
 import { waLink, type Item, type Site } from "../lib/site";
 import Torre3D from "./Torre3D";
 import { montar } from "../lib/torre3d";
-import { gruposDe, mudar, mudarTorres, podeMudar, podeMudarTorres, quantidadesIniciais, statusGrupo, sugerida } from "../lib/calculo";
+import { gruposDe, motivoPainel, mudar, mudarTorres, podeMudar, podeMudarTorres, quantidadesIniciais, statusGrupo, sugerida } from "../lib/calculo";
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
 const AJUDA_GRUPO: Record<string, string> = {
-  largura: "Cada 2 painéis sobem 1 m. Pode misturar 1 m e 1,5 m: os níveis se intercalam.",
+  largura: "Cada 2 painéis sobem 1 m. Na torre mista os níveis alternam 1 m e 1,5 m, então as duas quantidades andam juntas.",
   base: "Pode misturar sapatas e rodinhas.",
 };
 
@@ -41,14 +41,14 @@ export default function Calculadora({ site }: { site: Site }) {
 
   // mudar torres reajusta a lista sem apagar o que a pessoa escolheu
   const mudarQtdTorres = (t: number) => {
-    if (!podeMudarTorres(torres, t - torres)) return;
+    if (!podeMudarTorres(site.itens, qtd, torres, t - torres, site.pedido)) return;
     setQtd(mudarTorres(site.itens, qtd, torres, t, site.pedido));
     setTorres(t);
   };
   const pode = (it: Item, d: number, min: number) => podeMudar(site.itens, qtd, it, d, min, torres, site.pedido);
   /** Por que o + está travado (aparece embaixo do nome). */
   const motivo = (it: Item, q: number) => {
-    if (it.grupo === "largura") return `Altura máxima: ${site.pedido.alturaMaxima} m`;
+    if (it.grupo === "largura") return motivoPainel(site.itens, qtd, it, torres, site.pedido);
     if (it.grupo) return "";
     if (/plataforma/i.test(it.nome)) return q === 0 ? "Não cabe nesta torre" : "Não cabe mais";
     if (/escada/i.test(it.nome)) return "Já cobre toda a altura";
@@ -100,7 +100,7 @@ export default function Calculadora({ site }: { site: Site }) {
 
       <div className="calc-painel">
         <div className="calc-steppers">
-          <Stepper rotulo="Torres" valor={torres} podeMenos={podeMudarTorres(torres, -1)} podeMais={podeMudarTorres(torres, 1)} onChange={mudarQtdTorres} />
+          <Stepper rotulo="Torres" valor={torres} podeMenos={podeMudarTorres(site.itens, qtd, torres, -1, site.pedido)} podeMais={podeMudarTorres(site.itens, qtd, torres, 1, site.pedido)} onChange={mudarQtdTorres} />
           <div className="stepper altura-lida">
             <span className="stepper-rotulo">Altura</span>
             <output aria-live="polite">{altura}<small> m</small></output>
