@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { waLink, type Item, type Site } from "../lib/site";
-import Torre, { type TorreInfo } from "./Torre";
+import Torre3D from "./Torre3D";
+import { montar } from "../lib/torre3d";
 
 const MAX = 30;
 
@@ -9,12 +10,6 @@ function sugerida(it: Item, altura: number, torres: number) {
   if (it.regra === "por_metro") return it.quantidade * altura * torres;
   if (it.regra === "por_torre") return it.quantidade * torres;
   return 0;
-}
-
-/** Largura em metros a partir do nome ("Andaime 1,5 m" → 1.5). */
-function larguraDe(nome = "") {
-  const m = nome.match(/(\d+(?:[.,]\d+)?)\s*m\b/i);
-  return m ? Number(m[1].replace(",", ".")) : 1;
 }
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
@@ -38,24 +33,6 @@ function quantidadesIniciais(itens: Item[], altura: number, torres: number) {
     } else q[it.id] = 0;
   }
   return q;
-}
-
-/** Distribui larguras e bases pelas torres desenhadas, conforme as quantidades. */
-function montarTorres(itens: Item[], qtd: Record<string, number>, altura: number, torres: number): TorreInfo[] {
-  const paineis = itens.filter((i) => i.grupo === "largura");
-  const larguras: number[] = [];
-  for (const it of paineis) {
-    const n = Math.round((qtd[it.id] ?? 0) / (2 * altura));
-    for (let k = 0; k < n; k++) larguras.push(larguraDe(it.nome));
-  }
-  const padraoLarg = larguraDe(paineis.find((i) => (qtd[i.id] ?? 0) > 0)?.nome ?? paineis[0]?.nome);
-  const rodinhas = itens.filter((i) => i.grupo === "base" && /rod/i.test(i.nome)).reduce((s, i) => s + (qtd[i.id] ?? 0), 0);
-  const sapatas = itens.filter((i) => i.grupo === "base" && !/rod/i.test(i.nome)).reduce((s, i) => s + (qtd[i.id] ?? 0), 0);
-  return Array.from({ length: torres }, (_, t) => ({
-    largura: larguras[t] ?? padraoLarg,
-    // sapatas primeiro, depois rodinhas; sem base suficiente, a torre aparece sem nada embaixo
-    base: t < sapatas ? "sapata" : t < sapatas + rodinhas ? "rodinha" : "nenhuma",
-  }));
 }
 
 function Stepper({ rotulo, valor, min, max, onChange, sufixo }: { rotulo: string; valor: number; min: number; max: number; onChange: (v: number) => void; sufixo?: string }) {
@@ -131,7 +108,7 @@ export default function Calculadora({ site }: { site: Site }) {
   return (
     <div className="calc">
       <div className="calc-visual">
-        <Torre niveis={altura} torres={montarTorres(site.itens, qtd, altura, torres)} />
+        <Torre3D montagem={montar(site.itens, qtd, altura, torres)} />
       </div>
 
       <div className="calc-painel">

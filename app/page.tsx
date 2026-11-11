@@ -69,18 +69,10 @@ export default async function Home() {
         <section className="hero">
           <div className="wrap">
             <h1>Aluguel de andaimes <span>em {regiao} e região</span></h1>
-            <p>Monte sua torre aqui embaixo, veja quantas peças você precisa e mande o pedido direto no WhatsApp. A gente entrega na sua obra.</p>
+            <p>Veja os equipamentos, monte sua torre aqui embaixo e mande o pedido direto no WhatsApp. A gente entrega na sua obra.</p>
           </div>
           <div className="hero-barra" aria-hidden="true" />
           <div className="zebra" aria-hidden="true" />
-        </section>
-
-        <section id="calculadora" className="secao secao-calc" aria-labelledby="t-calc">
-          <div className="wrap">
-            <h2 id="t-calc">Monte sua torre</h2>
-            <p className="lead">Cada metro de altura usa 2 painéis e 1 travessa. Escolha a altura e o resto a gente calcula.</p>
-            <Calculadora site={site} />
-          </div>
         </section>
 
         <section id="equipamentos" className="secao" aria-labelledby="t-eq">
@@ -98,6 +90,14 @@ export default async function Home() {
                 <ul className="produtos">{acessorios.map((it) => <Produto key={it.id} it={it} />)}</ul>
               </>
             )}
+          </div>
+        </section>
+
+        <section id="calculadora" className="secao secao-calc" aria-labelledby="t-calc">
+          <div className="wrap">
+            <h2 id="t-calc">Monte sua torre</h2>
+            <p className="lead">Escolha a altura e quantas torres. Cada peça que você adiciona aparece montada na torre.</p>
+            <Calculadora site={site} />
           </div>
         </section>
 
