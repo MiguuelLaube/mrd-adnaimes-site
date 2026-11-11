@@ -116,15 +116,16 @@ function planejarSemMemoria(pares: Map<number, number>, T: number, padrao: numbe
     }
   }
 
-  // 3) dentro da torre: a largura com menos pares se espalha por igual entre a outra
-  //    (empate: a maior largura começa embaixo, ficando 1,5 / 1 / 1,5 / 1)
+  // 3) dentro da torre: a largura com menos pares se espalha por igual entre a outra,
+  //    sempre intercalada (nunca na ponta quando dá para ficar no meio)
   const torres: TorrePlano[] = conta.map((c, t) => {
     const n = alturas[t];
     const nL = c.get(L) ?? 0;
     const nS = n - nL;
     const [poucos, muitos, m] = nL <= nS ? [L, S, nL] : [S, L, nS];
     const niveis: number[] = Array(n).fill(muitos);
-    for (let i = 0; i < m; i++) niveis[Math.floor((i * n) / m)] = poucos;
+    // posições centradas: com 1 de 3 fica no meio (1 / 1,5 / 1); com 2 de 4, alterna (1 / 1,5 / 1 / 1,5)
+    for (let i = 0; i < m; i++) niveis[Math.floor(((i + 0.5) * n) / m)] = poucos;
     const misto = nL > 0 && nS > 0;
     const w = nL === n ? L : S;
     return { niveis, frente: misto ? L : w, fundo: misto ? S : w };
