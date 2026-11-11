@@ -31,12 +31,15 @@ export function statusGrupo(itens: Item[], grupo: string, qtd: Qtd, altura: numb
   return { ok: true, texto: `${total} de ${min} ✓`, total, min };
 }
 
-/** + e − de um item. Painéis andam de 0 direto para o mínimo por tamanho, e do mínimo de volta para 0. */
+/**
+ * + e − de um item. Painéis andam em pares (cada nível usa 2 iguais), indo de 0 direto
+ * para o mínimo por tamanho e do mínimo de volta para 0.
+ */
 export function passo(it: Item, atual: number, d: number, minimo: number, regras: Regras = SEM_REGRAS) {
-  const m = it.grupo === "largura" ? regras.minimoPorTamanho : 0;
-  if (m > 1 && d > 0 && atual === 0) return m;
-  if (m > 1 && d < 0 && atual <= m) return 0;
-  return Math.max(minimo, atual + d);
+  if (it.grupo !== "largura") return Math.max(minimo, atual + d);
+  const m = Math.max(2, regras.minimoPorTamanho);
+  if (d > 0) return atual === 0 ? m : atual + 2;
+  return atual <= m ? 0 : atual - 2;
 }
 
 export function gruposDe(itens: Item[]) {
@@ -82,7 +85,8 @@ export function reajustar(itens: Item[], qtd: Qtd, de: { altura: number; torres:
       const alvo = Math.max(minAgora, Math.round(total * fator));
       let soma = 0;
       for (const it of its) {
-        q[it.id] = Math.round((qtd[it.id] ?? 0) * fator);
+        const v = (qtd[it.id] ?? 0) * fator;
+        q[it.id] = g === "largura" ? 2 * Math.round(v / 2) : Math.round(v); // painéis sempre em pares
         soma += q[it.id];
       }
       const maior = its.reduce((a, b) => ((q[b.id] ?? 0) > (q[a.id] ?? 0) ? b : a));

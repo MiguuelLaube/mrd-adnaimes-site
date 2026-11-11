@@ -9,7 +9,7 @@ const MAX = 30;
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
 const AJUDA_GRUPO: Record<string, string> = {
-  largura: "Pode misturar as larguras. Pedido mínimo: 4 painéis, com pelo menos 2 de cada tamanho escolhido.",
+  largura: "Pode misturar 1 m e 1,5 m: os níveis se intercalam. Cada nível usa 2 painéis iguais.",
   base: "Pode misturar sapatas e rodinhas.",
 };
 

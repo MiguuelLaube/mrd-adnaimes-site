@@ -5,7 +5,7 @@ import { desenhar, svgParte, type Montagem } from "../lib/torre3d";
 /** Torre em 3D: cada peça adicionada "encaixa" de cima para baixo; peças removidas somem. */
 export default function Torre3D({ montagem }: { montagem: Montagem }) {
   const { grupos, viewBox } = desenhar(montagem);
-  const descricao = `${montagem.total > 1 ? `${montagem.total} torres` : "Torre"} de andaime com ${montagem.niveis} m de altura`;
+  const descricao = `${montagem.total > 1 ? `${montagem.total} torres` : "Torre"} de andaime com ${montagem.altura} m de altura`;
 
   return (
     <LazyMotion features={domAnimation} strict>

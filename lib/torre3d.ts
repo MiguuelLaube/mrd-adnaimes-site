@@ -1,23 +1,29 @@
 /**
- * Montagem da torre em 3D (projeção isométrica), sem depender de React.
+ * Montagem da torre em 3D, sem depender de React.
  * O site (com Motion) e a prévia (JS puro) desenham a mesma lista de grupos.
  *
- * Eixos em metros: x = largura do painel (vira a profundidade na tela), y = altura,
- * z = vão entre os dois painéis (vira a frente da torre). Os painéis ficam nas laterais
- * e a travessa aparece como uma diagonal na frente, como nas torres reais.
+ * Como a torre real é montada:
+ * - cada nível (1 m) usa um par de painéis iguais, um de cada lado;
+ * - os painéis revezam de posição a cada nível: num nível ficam nas laterais, no seguinte na frente e atrás;
+ * - numa torre mista, os painéis de 1,5 m formam a frente e os de 1 m as laterais, intercalando os níveis;
+ * - a travessa é horizontal, no meio do nível, ligando um canto ao canto oposto.
+ *
+ * Coordenadas locais em metros: f = frente (da esquerda para a direita), d = profundidade, y = altura.
  */
 import type { Item } from "./site";
 
 export type Base = "sapata" | "rodinha" | "nenhuma";
 export type TorreMontagem = {
-  largura: number;
-  niveisMontados: number;
+  /** Largura do par de painéis de cada nível montado, de baixo para cima. */
+  niveis: number[];
+  frente: number;
+  fundo: number;
   travessas: number;
   plataformas: number;
   escadas: number;
   base: Base;
 };
-export type Montagem = { niveis: number; torres: TorreMontagem[]; total: number };
+export type Montagem = { altura: number; torres: TorreMontagem[]; total: number };
 
 export type Parte =
   | { tipo: "linha"; cls: string; pts: [number, number][] }
@@ -26,17 +32,14 @@ export type Parte =
 export type Grupo = { key: string; atraso: number; partes: Parte[] };
 export type Desenho = { grupos: Grupo[]; viewBox: string };
 
-const PROF = 1.5; // vão entre os dois painéis (comprimento da travessa)
 const ALTURA_BASE = 0.32;
 const VAO = 0.9; // espaço entre torres vizinhas
 const VISIVEIS = 3;
 const U = 48; // px por metro antes do viewBox escalar
-// Projeção oblíqua: a frente (z) quase reta e a profundidade (x) recuando para cima e à direita, encurtada.
+// Projeção oblíqua: a frente quase reta e a profundidade recuando para cima e à direita, encurtada.
 const AF = (6 * Math.PI) / 180;
 const AP = (38 * Math.PI) / 180;
 const KP = 0.55;
-/** Origem da torre que está sendo desenhada: x local vira profundidade, z ganha o deslocamento da torre na frente. */
-const eixo = { ox: 0, of: 0 };
 
 /** Largura em metros a partir do nome ("Andaime 1,5 m" → 1.5). */
 export function larguraDe(nome = "") {
@@ -47,12 +50,15 @@ export function larguraDe(nome = "") {
 const soma = (itens: Item[], qtd: Record<string, number>, f: (i: Item) => boolean) =>
   itens.filter(f).reduce((s, i) => s + (qtd[i.id] ?? 0), 0);
 
-/** Divide n peças entre as torres, uma por vez (a primeira torre recebe as sobras). */
+/** Divide n peças entre as torres (a primeira torre recebe as sobras). */
 const dividir = (n: number, torres: number, t: number) => Math.floor(n / torres) + (t < n % torres ? 1 : 0);
 
 /** Transforma as quantidades da lista no que cada torre tem montado. */
 export function montar(itens: Item[], qtd: Record<string, number>, altura: number, torres: number): Montagem {
   const paineis = itens.filter((i) => i.grupo === "largura").map((i) => ({ largura: larguraDe(i.nome), resta: qtd[i.id] ?? 0 }));
+  const padrao = paineis.find((p) => p.resta > 0)?.largura ?? paineis[0]?.largura ?? 1;
+  // a maior largura começa, e as larguras se intercalam enquanto houver pares das duas
+  const ordem = paineis.map((_, j) => j).sort((a, b) => paineis[b].largura - paineis[a].largura);
   const travessas = soma(itens, qtd, (i) => /travess/i.test(i.nome));
   const plataformas = soma(itens, qtd, (i) => /plataforma/i.test(i.nome));
   const escadas = soma(itens, qtd, (i) => /escada/i.test(i.nome));
@@ -61,79 +67,84 @@ export function montar(itens: Item[], qtd: Record<string, number>, altura: numbe
 
   const lista: TorreMontagem[] = [];
   for (let t = 0; t < torres; t++) {
-    // cada torre pega painéis da primeira largura que ainda tem peças
-    let precisa = 2 * altura;
-    let largura = paineis.find((p) => p.resta > 0)?.largura ?? paineis[0]?.largura ?? 1;
-    let recebidos = 0;
-    for (const p of paineis) {
-      if (precisa === 0) break;
-      const pega = Math.min(p.resta, precisa);
-      if (pega > 0 && recebidos === 0) largura = p.largura;
-      p.resta -= pega;
-      precisa -= pega;
-      recebidos += pega;
+    const niveis: number[] = [];
+    let k = 0;
+    while (niveis.length < altura && paineis.some((p) => p.resta >= 2)) {
+      const p = paineis[ordem[k++ % ordem.length]];
+      if (p.resta < 2) continue;
+      p.resta -= 2;
+      niveis.push(p.largura);
     }
+    const usadas = [...new Set(niveis)];
     lista.push({
-      largura,
-      niveisMontados: Math.floor(recebidos / 2),
+      niveis,
+      frente: usadas.length ? Math.max(...usadas) : padrao,
+      fundo: usadas.length ? Math.min(...usadas) : padrao,
       travessas: dividir(travessas, torres, t),
       plataformas: dividir(plataformas, torres, t),
       escadas: dividir(escadas, torres, t),
       base: t < sapatas ? "sapata" : t < sapatas + rodinhas ? "rodinha" : "nenhuma",
     });
   }
-  return { niveis: altura, torres: lista.slice(0, VISIVEIS), total: torres };
+  return { altura, torres: lista.slice(0, VISIVEIS), total: torres };
 }
 
-/** Projeção: metros → px. */
-const P = (x: number, y: number, z: number): [number, number] => {
-  const d = x - eixo.ox;
-  const f = z + eixo.of;
-  return [+((f * Math.cos(AF) + d * KP * Math.cos(AP)) * U).toFixed(1), +((f * Math.sin(AF) - d * KP * Math.sin(AP) - y) * U).toFixed(1)];
-};
-const L = (cls: string, a: [number, number, number], b: [number, number, number]): Parte => ({ tipo: "linha", cls, pts: [P(...a), P(...b)] });
+type Ponto3 = [number, number, number]; // [f, y, d]
+let origem = 0; // deslocamento da torre atual na frente
 
-function painel(ox: number, y0: number, z: number, w: number): Parte[] {
+/** Projeção: (frente, altura, profundidade) em metros → px. */
+const P = (f: number, y: number, d: number): [number, number] => {
+  const x = f + origem;
+  return [+((x * Math.cos(AF) + d * KP * Math.cos(AP)) * U).toFixed(1), +((x * Math.sin(AF) - d * KP * Math.sin(AP) - y) * U).toFixed(1)];
+};
+const L = (cls: string, a: Ponto3, b: Ponto3): Parte => ({ tipo: "linha", cls, pts: [P(...a), P(...b)] });
+
+/** Um painel entre dois cantos (f, d), do nível y0 ao y0 + 1. */
+function painel(a: [number, number], b: [number, number], y0: number): Parte[] {
+  const [fa, da] = a;
+  const [fb, db] = b;
   const p: Parte[] = [
-    L("tubo", [ox, y0, z], [ox, y0 + 1, z]),
-    L("tubo", [ox + w, y0, z], [ox + w, y0 + 1, z]),
-    L("tubo", [ox, y0 + 0.9, z], [ox + w, y0 + 0.9, z]),
-    L("tubo", [ox, y0 + 0.12, z], [ox + w, y0 + 0.12, z]),
+    L("tubo", [fa, y0, da], [fa, y0 + 1, da]),
+    L("tubo", [fb, y0, db], [fb, y0 + 1, db]),
+    L("tubo", [fa, y0 + 0.9, da], [fb, y0 + 0.9, db]),
+    L("tubo", [fa, y0 + 0.12, da], [fb, y0 + 0.12, db]),
   ];
-  if (w > 1.2) p.push(L("tubo fino", [ox + w / 2, y0 + 0.12, z], [ox + w / 2, y0 + 0.9, z]));
+  if (Math.hypot(fb - fa, db - da) > 1.2) {
+    const fm = (fa + fb) / 2;
+    const dm = (da + db) / 2;
+    p.push(L("tubo fino", [fm, y0 + 0.12, dm], [fm, y0 + 0.9, dm]));
+  }
   return p;
 }
 
 export function desenhar(m: Montagem): Desenho {
   const grupos: Grupo[] = [];
   const hb = ALTURA_BASE;
-  let ox = 0;
-  let of = 0;
   const pontos: [number, number][] = [];
+  let desloc = 0;
 
   m.torres.forEach((t, ti) => {
-    const w = Math.max(0.6, Math.min(2, t.largura));
+    origem = desloc;
+    const A = t.frente; // largura da frente
+    const B = t.fundo; // profundidade
     const id = `t${ti}`;
-    eixo.ox = ox;
-    eixo.of = of;
-    const topo = hb + m.niveis;
-    const feitos = Math.min(t.niveisMontados, m.niveis);
-    const cantos: [number, number][] = [
-      [ox, 0], [ox + w, 0], [ox, PROF], [ox + w, PROF],
-    ];
+    const topo = hb + m.altura;
+    const feitos = Math.min(t.niveis.length, m.altura);
+    const misto = A !== B;
+    const cantos: [number, number][] = [[0, 0], [A, 0], [0, B], [A, B]];
+    /** Painéis do nível na frente/atrás (largura A) ou nas laterais (largura B); revezam a cada nível. */
+    const naFrente = (n: number) => (misto ? t.niveis[n] === A : n % 2 === 1);
 
-    // sombra no chão
-    grupos.push({ key: `${id}-chao`, atraso: 0, partes: [{ tipo: "poligono", cls: "chao", pts: [P(ox - 0.25, 0, -0.25), P(ox + w + 0.25, 0, -0.25), P(ox + w + 0.25, 0, PROF + 0.25), P(ox - 0.25, 0, PROF + 0.25)] }] });
+    grupos.push({ key: `${id}-chao-${A}-${B}`, atraso: 0, partes: [{ tipo: "poligono", cls: "chao", pts: [P(-0.25, 0, -0.25), P(A + 0.25, 0, -0.25), P(A + 0.25, 0, B + 0.25), P(-0.25, 0, B + 0.25)] }] });
 
-    // o que ainda falta montar, tracejado
-    if (feitos < m.niveis) {
+    if (feitos < m.altura) {
       const y1 = hb + feitos;
       grupos.push({
-        key: `${id}-fantasma-${feitos}-${m.niveis}-${w}`,
+        key: `${id}-fantasma-${feitos}-${m.altura}-${A}-${B}`,
         atraso: 0,
         partes: [
-          ...cantos.map(([x, z]) => L("fantasma", [x, y1, z], [x, topo, z])),
-          { tipo: "poligono", cls: "fantasma", pts: [P(ox, topo, 0), P(ox + w, topo, 0), P(ox + w, topo, PROF), P(ox, topo, PROF)] },
+          ...cantos.map(([f, d]) => L("fantasma", [f, y1, d], [f, topo, d])),
+          { tipo: "poligono", cls: "fantasma", pts: [P(0, topo, 0), P(A, topo, 0), P(A, topo, B), P(0, topo, B)] },
         ],
       });
     }
@@ -141,93 +152,108 @@ export function desenhar(m: Montagem): Desenho {
     // base: sapatas (rosca + placa) ou rodinhas (garfo + roda)
     if (t.base !== "nenhuma") {
       const partes: Parte[] = [];
-      for (const [x, z] of cantos) {
+      for (const [f, d] of cantos) {
         if (t.base === "sapata") {
-          partes.push(L("rosca", [x, 0.02, z], [x, hb, z]));
-          partes.push(L("manivela", [x - 0.09, 0.2, z], [x + 0.09, 0.2, z]));
+          partes.push(L("rosca", [f, 0.02, d], [f, hb, d]));
+          partes.push(L("manivela", [f - 0.09, 0.2, d], [f + 0.09, 0.2, d]));
           const r = 0.13;
-          partes.push({ tipo: "poligono", cls: "placa", pts: [P(x - r, 0.01, z - r), P(x + r, 0.01, z - r), P(x + r, 0.01, z + r), P(x - r, 0.01, z + r)] });
+          partes.push({ tipo: "poligono", cls: "placa", pts: [P(f - r, 0.01, d - r), P(f + r, 0.01, d - r), P(f + r, 0.01, d + r), P(f - r, 0.01, d + r)] });
         } else {
-          partes.push(L("garfo", [x, hb, z], [x, 0.17, z]));
+          partes.push(L("garfo", [f, hb, d], [f, 0.17, d]));
           const pts: [number, number][] = [];
           for (let a = 0; a < 16; a++) {
             const ang = (a / 16) * Math.PI * 2;
-            pts.push(P(x + Math.cos(ang) * 0.12, 0.12 + Math.sin(ang) * 0.12, z));
+            pts.push(P(f + Math.cos(ang) * 0.12, 0.12 + Math.sin(ang) * 0.12, d));
           }
           partes.push({ tipo: "poligono", cls: "roda", pts });
         }
       }
-      grupos.push({ key: `${id}-base-${t.base}`, atraso: 0, partes });
+      grupos.push({ key: `${id}-base-${t.base}-${A}-${B}`, atraso: 0, partes });
     } else {
-      grupos.push({ key: `${id}-sembase`, atraso: 0, partes: cantos.map(([x, z]) => L("fantasma", [x, 0, z], [x, hb, z])) });
+      grupos.push({ key: `${id}-sembase-${A}-${B}`, atraso: 0, partes: cantos.map(([f, d]) => L("fantasma", [f, 0, d], [f, hb, d])) });
     }
 
-    // painéis de trás (z=0), travessas da lateral do fundo, plataformas, painéis da frente, travessas da lateral da frente
+    // painéis: os do fundo/esquerda antes, os da frente/direita depois (para sobrepor certo)
+    const paineisFundo: Grupo[] = [];
+    const paineisFrente: Grupo[] = [];
     for (let n = 0; n < feitos; n++) {
-      grupos.push({ key: `${id}-tras-${n}-${w}`, atraso: Math.min(n, 10) * 0.04, partes: painel(ox, hb + n, 0, w) });
-    }
-    const trav = (i: number, x: number) => {
-      const n = i % feitos;
       const y0 = hb + n;
-      const sobe = n % 2 === 0;
-      return { key: `${id}-trav-${i}`, atraso: 0.1, partes: [L("travessa", [x, y0 + (sobe ? 0.12 : 0.9), 0], [x, y0 + (sobe ? 0.9 : 0.12), PROF])] };
-    };
-    if (feitos > 0) {
-      for (let i = feitos; i < Math.min(t.travessas, feitos * 2); i++) grupos.push(trav(i, ox + w));
-      // plataformas: pranchas de ~30 cm apoiadas de um painel ao outro, enchendo o piso do topo para baixo
-      const LARG = 0.3;
-      const porNivel = Math.max(1, Math.floor((w + 0.04) / (LARG + 0.04)));
-      const folga = (w - porNivel * LARG) / (porNivel + 1);
-      for (let j = 0; j < Math.min(t.plataformas, feitos * porNivel); j++) {
-        const nivel = feitos - 1 - Math.floor(j / porNivel);
-        const y = hb + nivel + 0.9; // em cima do travessão do painel
-        const xa = ox + folga + (j % porNivel) * (LARG + folga);
-        const xb = xa + LARG;
-        const e = 0.05; // espessura
-        const z0 = -0.04;
-        const z1 = PROF + 0.04;
-        grupos.push({
-          key: `${id}-plat-${j}-${w}`,
-          atraso: 0.08,
-          partes: [
-            { tipo: "poligono", cls: "plataforma-lado", pts: [P(xa, y, z1), P(xb, y, z1), P(xb, y - e, z1), P(xa, y - e, z1)] },
-            { tipo: "poligono", cls: "plataforma-lado", pts: [P(xb, y, z0), P(xb, y, z1), P(xb, y - e, z1), P(xb, y - e, z0)] },
-            { tipo: "poligono", cls: "plataforma", pts: [P(xa, y, z0), P(xb, y, z0), P(xb, y, z1), P(xa, y, z1)] },
-            L("gancho", [xa + 0.05, y, z1], [xa + 0.05, y - 0.08, z1]),
-            L("gancho", [xb - 0.05, y, z1], [xb - 0.05, y - 0.08, z1]),
-          ],
-        });
+      const chave = `${id}-n${n}-${t.niveis[n]}-${A}-${B}`;
+      const atraso = Math.min(n, 10) * 0.05;
+      if (naFrente(n)) {
+        paineisFundo.push({ key: `${chave}-tras`, atraso, partes: painel([0, B], [A, B], y0) });
+        paineisFrente.push({ key: `${chave}-frente`, atraso: atraso + 0.04, partes: painel([0, 0], [A, 0], y0) });
+      } else {
+        paineisFundo.push({ key: `${chave}-esq`, atraso, partes: painel([0, 0], [0, B], y0) });
+        paineisFrente.push({ key: `${chave}-dir`, atraso: atraso + 0.04, partes: painel([A, 0], [A, B], y0) });
       }
     }
-    for (let n = 0; n < feitos; n++) {
-      grupos.push({ key: `${id}-frente-${n}-${w}`, atraso: Math.min(n, 10) * 0.04 + 0.05, partes: painel(ox, hb + n, PROF, w) });
-    }
+    grupos.push(...paineisFundo);
+
     if (feitos > 0) {
-      for (let i = 0; i < Math.min(t.travessas, feitos); i++) grupos.push(trav(i, ox));
-      // escada pendurada no painel lateral: cada escada cobre 2 m
-      for (let k = 0; k < t.escadas; k++) {
-        const y0 = hb + k * 2;
-        if (y0 >= hb + feitos) break;
-        const y1 = Math.min(y0 + 2, hb + feitos);
-        const z = PROF + 0.08;
-        const xa = ox + w * 0.18;
-        const xb = xa + 0.38;
-        const partes: Parte[] = [L("escada", [xa, y0, z], [xa, y1 + 0.15, z]), L("escada", [xb, y0, z], [xb, y1 + 0.15, z])];
-        for (let y = y0 + 0.2; y < y1; y += 0.28) partes.push(L("degrau", [xa, y, z], [xb, y, z]));
-        grupos.push({ key: `${id}-escada-${k}-${y1}-${w}`, atraso: 0.1, partes });
+      // travessas: horizontais no meio do nível, de um canto ao canto oposto; a 2ª no mesmo nível fecha o X
+      for (let i = 0; i < Math.min(t.travessas, feitos * 2); i++) {
+        const n = i % feitos;
+        const y = hb + n + 0.5;
+        const sentido = (n + Math.floor(i / feitos)) % 2 === 0;
+        const parte = sentido ? L("travessa", [0, y, 0], [A, y, B]) : L("travessa", [A, y, 0], [0, y, B]);
+        grupos.push({ key: `${id}-trav-${i}-${A}-${B}`, atraso: 0.1, partes: [parte] });
+      }
+
+      // plataformas: pranchas de ~30 cm apoiadas entre os dois painéis do nível, do topo para baixo
+      const LARG = 0.3;
+      const e = 0.05;
+      let j = 0;
+      for (let n = feitos - 1; n >= 0 && j < t.plataformas; n--) {
+        const frente = naFrente(n);
+        const fila = frente ? A : B; // as pranchas se enfileiram ao longo do painel
+        const vao = frente ? B : A; // e atravessam de um painel ao outro
+        const porNivel = Math.max(1, Math.floor((fila + 0.04) / (LARG + 0.04)));
+        const folga = (fila - porNivel * LARG) / (porNivel + 1);
+        const y = hb + n + 0.9;
+        // u: posição ao longo do painel; v: atravessando o vão
+        const q = (u: number, v: number, yy: number) => (frente ? P(u, yy, v) : P(v, yy, u));
+        for (let k = 0; k < porNivel && j < t.plataformas; k++, j++) {
+          const u0 = folga + k * (LARG + folga);
+          const u1 = u0 + LARG;
+          const v0 = -0.04;
+          const v1 = vao + 0.04;
+          const lado = frente ? [q(u0, v0, y), q(u1, v0, y), q(u1, v0, y - e), q(u0, v0, y - e)] : [q(u0, v0, y), q(u0, v1, y), q(u0, v1, y - e), q(u0, v0, y - e)];
+          grupos.push({
+            key: `${id}-plat-${n}-${k}-${A}-${B}`,
+            atraso: 0.08,
+            partes: [
+              { tipo: "poligono", cls: "plataforma-lado", pts: lado },
+              { tipo: "poligono", cls: "plataforma", pts: [q(u0, v0, y), q(u1, v0, y), q(u1, v1, y), q(u0, v1, y)] },
+            ],
+          });
+        }
       }
     }
 
-    for (const [x, z] of cantos) for (const y of [0, topo]) pontos.push(P(x, y, z));
-    ox += w;
-    of += PROF + VAO;
+    grupos.push(...paineisFrente);
+
+    // escada pendurada na lateral direita: cada escada cobre 2 m
+    for (let k = 0; k < t.escadas; k++) {
+      const y0 = hb + k * 2;
+      if (y0 >= hb + feitos) break;
+      const y1 = Math.min(y0 + 2, hb + feitos);
+      const f = A + 0.08;
+      const da = B * 0.2;
+      const db = da + 0.38;
+      const partes: Parte[] = [L("escada", [f, y0, da], [f, y1 + 0.15, da]), L("escada", [f, y0, db], [f, y1 + 0.15, db])];
+      for (let y = y0 + 0.2; y < y1; y += 0.28) partes.push(L("degrau", [f, y, da], [f, y, db]));
+      grupos.push({ key: `${id}-escada-${k}-${y1}-${A}-${B}`, atraso: 0.1, partes });
+    }
+
+    for (const [f, d] of cantos) for (const y of [0, topo]) pontos.push(P(f, y, d));
+    desloc += A + VAO;
   });
 
   // cota de altura à esquerda da primeira torre
-  eixo.ox = 0;
-  eixo.of = 0;
-  const a = P(0, hb, -0.4);
-  const b = P(0, hb + m.niveis, -0.4);
+  origem = 0;
+  const a = P(-0.4, hb, 0);
+  const b = P(-0.4, hb + m.altura, 0);
   grupos.push({
     key: "cota",
     atraso: 0,
@@ -235,12 +261,12 @@ export function desenhar(m: Montagem): Desenho {
       { tipo: "linha", cls: "cota", pts: [a, b] },
       { tipo: "linha", cls: "cota", pts: [[a[0] - 6, a[1]], [a[0] + 6, a[1]]] },
       { tipo: "linha", cls: "cota", pts: [[b[0] - 6, b[1]], [b[0] + 6, b[1]]] },
-      { tipo: "texto", cls: "cota-txt", pts: [[a[0] - 12, (a[1] + b[1]) / 2]], texto: `${m.niveis} m` },
+      { tipo: "texto", cls: "cota-txt", pts: [[a[0] - 12, (a[1] + b[1]) / 2]], texto: `${m.altura} m` },
     ],
   });
   pontos.push([a[0] - 30, a[1]], b);
   if (m.total > VISIVEIS) {
-    const p = P(0, hb + 0.5, of - VAO + 0.15);
+    const p = P(desloc - VAO + 0.15, hb + 0.5, 0);
     grupos.push({ key: "mais", atraso: 0, partes: [{ tipo: "texto", cls: "mais", pts: [p], texto: `+${m.total - VISIVEIS}` }] });
     pontos.push([p[0] + 30, p[1]]);
   }
