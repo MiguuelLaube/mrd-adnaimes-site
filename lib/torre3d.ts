@@ -6,7 +6,7 @@
  * - cada nível (1 m) usa um par de painéis iguais, um de cada lado;
  * - os painéis revezam de posição a cada nível: num nível ficam nas laterais, no seguinte na frente e atrás;
  * - numa torre mista, os painéis de 1,5 m formam a frente e os de 1 m as laterais, intercalando os níveis;
- * - a travessa é horizontal, no meio do nível, ligando um canto ao canto oposto.
+ * - a travessa é uma barra horizontal por nível, onde o painel começa, ligando um canto ao canto oposto.
  *
  * Coordenadas locais em metros: f = frente (da esquerda para a direita), d = profundidade, y = altura.
  */
@@ -191,11 +191,13 @@ export function desenhar(m: Montagem): Desenho {
     grupos.push(...paineisFundo);
 
     if (feitos > 0) {
-      // travessas: horizontais no meio do nível, de um canto ao canto oposto; a 2ª no mesmo nível fecha o X
-      for (let i = 0; i < Math.min(t.travessas, feitos * 2); i++) {
-        const n = i % feitos;
-        const y = hb + n + 0.5;
-        const sentido = (n + Math.floor(i / feitos)) % 2 === 0;
+      // travessas: uma barra horizontal por nível, logo onde o painel começa (no travessão de baixo),
+      // de um canto ao canto oposto, alternando o sentido. Travessas extras entram no pedido, mas o desenho
+      // mostra uma por nível.
+      for (let i = 0; i < Math.min(t.travessas, feitos); i++) {
+        const n = i;
+        const y = hb + n + 0.12;
+        const sentido = n % 2 === 0;
         const parte = sentido ? L("travessa", [0, y, 0], [A, y, B]) : L("travessa", [A, y, 0], [0, y, B]);
         grupos.push({ key: `${id}-trav-${i}-${A}-${B}`, atraso: 0.1, partes: [parte] });
       }
