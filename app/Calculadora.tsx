@@ -7,7 +7,7 @@ import { gruposDe, mudar, mudarTorres, podeMudar, podeMudarTorres, quantidadesIn
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
 const AJUDA_GRUPO: Record<string, string> = {
-  largura: "Cada 2 painéis sobem 1 m. Misturando 1 m e 1,5 m, os níveis se intercalam (use a mesma quantidade das duas).",
+  largura: "Cada 2 painéis sobem 1 m. Pode misturar 1 m e 1,5 m: os níveis se intercalam.",
   base: "Pode misturar sapatas e rodinhas.",
 };
 

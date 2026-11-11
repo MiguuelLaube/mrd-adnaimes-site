@@ -97,71 +97,40 @@ function planejarSemMemoria(pares: Map<number, number>, T: number, padrao: numbe
   const larguras = [...pares.keys()].filter((w) => (pares.get(w) ?? 0) > 0).sort((x, y) => y - x);
   const L = larguras[0] ?? padrao;
   const S = larguras[larguras.length - 1] ?? padrao;
-  const disp = new Map(pares);
-  const torres: TorrePlano[] = [];
   const total = [...pares.values()].reduce((s, v) => s + v, 0);
-  const tem = (w: number) => (disp.get(w) ?? 0) > 0;
-  const usa = (w: number) => disp.set(w, (disp.get(w) ?? 0) - 1);
 
-  let plano: { H: number; z: number; k: number; x: number; y: number } | null = null;
-  if (larguras.length >= 2) {
-    const a = pares.get(L) ?? 0;
-    const b = pares.get(S) ?? 0;
-    // z mistas (k delas começando pela maior), x só da maior, y só da menor; prefere mais mistas
-    busca: for (let H = Math.floor(total / T); H >= 1; H--) {
-      for (let z = T; z >= 0; z--) {
-        for (let x = 0; x <= T - z; x++) {
-          const y = T - z - x;
-          for (let k = z; k >= 0; k--) {
-            const precisaL = x * H + k * Math.ceil(H / 2) + (z - k) * Math.floor(H / 2);
-            const precisaS = y * H + k * Math.floor(H / 2) + (z - k) * Math.ceil(H / 2);
-            if (precisaL <= a && precisaS <= b) {
-              plano = { H, z, k, x, y };
-              break busca;
-            }
-          }
-        }
-      }
+  // 1) alturas iguais: total de pares dividido pelas torres (as primeiras ganham a sobra de 1 nível)
+  const alturas = Array.from({ length: T }, (_, t) => Math.floor(total / T) + (t < total % T ? 1 : 0));
+
+  // 2) cada largura se espalha pelas torres, uma por vez, até a altura de cada uma
+  const conta = alturas.map(() => new Map<number, number>());
+  const livre = [...alturas];
+  for (const w of larguras) {
+    let resta = pares.get(w) ?? 0;
+    for (let t = 0; resta > 0; t = (t + 1) % T) {
+      if (livre.every((x) => x === 0)) break;
+      if (livre[t] === 0) continue;
+      conta[t].set(w, (conta[t].get(w) ?? 0) + 1);
+      livre[t]--;
+      resta--;
     }
   }
 
-  if (plano) {
-    const { H, z, k, x, y } = plano;
-    for (let i = 0; i < z; i++) {
-      const [p, q] = i < k ? [L, S] : [S, L];
-      const niveis = Array.from({ length: H }, (_, n) => (n % 2 === 0 ? p : q));
-      niveis.forEach(usa);
-      torres.push({ niveis, frente: L, fundo: S });
-    }
-    for (let i = 0; i < x; i++) torres.push({ niveis: Array.from({ length: H }, () => (usa(L), L)), frente: L, fundo: L });
-    for (let i = 0; i < y; i++) torres.push({ niveis: Array.from({ length: H }, () => (usa(S), S)), frente: S, fundo: S });
-  } else {
-    // uma largura só (ou pares de menos para todas as torres): reparte por igual, a maior largura primeiro
-    const fila = larguras.flatMap((w) => Array(pares.get(w) ?? 0).fill(w) as number[]);
-    const H = Math.floor(fila.length / T);
-    for (let t = 0; t < T; t++) {
-      const niveis = fila.splice(0, H);
-      niveis.forEach(usa);
-      const w = niveis[0] ?? L;
-      torres.push({ niveis, frente: Math.max(w, ...niveis), fundo: Math.min(w, ...niveis) });
-    }
-  }
+  // 3) dentro da torre: a largura com menos pares se espalha por igual entre a outra
+  //    (empate: a maior largura começa embaixo, ficando 1,5 / 1 / 1,5 / 1)
+  const torres: TorrePlano[] = conta.map((c, t) => {
+    const n = alturas[t];
+    const nL = c.get(L) ?? 0;
+    const nS = n - nL;
+    const [poucos, muitos, m] = nL <= nS ? [L, S, nL] : [S, L, nS];
+    const niveis: number[] = Array(n).fill(muitos);
+    for (let i = 0; i < m; i++) niveis[Math.floor((i * n) / m)] = poucos;
+    const misto = nL > 0 && nS > 0;
+    const w = nL === n ? L : S;
+    return { niveis, frente: misto ? L : w, fundo: misto ? S : w };
+  });
 
-  // pares que sobraram: um nível a mais por vez, nas torres que aceitam a próxima largura
-  for (let progresso = true; progresso; ) {
-    progresso = false;
-    for (const t of torres) {
-      const ultima = t.niveis[t.niveis.length - 1];
-      const misto = t.frente !== t.fundo;
-      const proxima = ultima === undefined ? (tem(t.frente) ? t.frente : t.fundo) : misto ? (ultima === t.frente ? t.fundo : t.frente) : ultima;
-      if (tem(proxima)) {
-        usa(proxima);
-        t.niveis.push(proxima);
-        progresso = true;
-      }
-    }
-  }
-  return { torres, sobra: disp };
+  return { torres, sobra: new Map<number, number>() };
 }
 
 /** Transforma as quantidades da lista no que cada torre tem montado. */
