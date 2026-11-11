@@ -2,7 +2,8 @@ import { getSite } from "../lib/store";
 import { waLink, type Item } from "../lib/site";
 import Calculadora from "./Calculadora";
 
-export const revalidate = 3600;
+// lê as configurações do painel a cada visita (o KV da Cloudflare responde em milissegundos)
+export const dynamic = "force-dynamic";
 
 function IconeWa({ size = 22 }: { size?: number }) {
   return (

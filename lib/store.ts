@@ -1,29 +1,50 @@
 import "server-only";
 import { cache } from "react";
-import { list, put } from "@vercel/blob";
-import { promises as fs } from "fs";
-import path from "path";
 import { padrao, type Site } from "./site";
 
-const KEY = "config/site.json";
-const LOCAL = path.join(process.cwd(), ".data", "site.json");
-const temBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+/**
+ * Onde os dados do painel ficam guardados:
+ * - na Cloudflare: no KV ligado ao Worker como DADOS (configurações em "site", fotos em "foto:<nome>");
+ * - rodando local (next dev): em arquivos (.data/site.json e public/uploads).
+ */
+type KV = {
+  get(chave: string, tipo: "text"): Promise<string | null>;
+  getWithMetadata<M>(chave: string, tipo: "arrayBuffer"): Promise<{ value: ArrayBuffer | null; metadata: M | null }>;
+  put(chave: string, valor: string | ArrayBuffer, opcoes?: { metadata?: unknown }): Promise<void>;
+};
+
+async function kv(): Promise<KV | null> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = await getCloudflareContext({ async: true });
+    return ((env as unknown as { DADOS?: KV }).DADOS) ?? null;
+  } catch {
+    return null; // fora da Cloudflare
+  }
+}
+
+const LOCAL = () => `${process.cwd()}/.data/site.json`;
 
 /** Mescla com o padrão para que campos novos nunca fiquem indefinidos. */
 function normalizar(s: Partial<Site>): Site {
-  return { ...padrao, ...s, empresa: { ...padrao.empresa, ...(s.empresa ?? {}) }, pedido: { ...padrao.pedido, ...(s.pedido ?? {}) } };
+  return {
+    ...padrao,
+    ...s,
+    empresa: { ...padrao.empresa, ...(s.empresa ?? {}) },
+    pedido: { ...padrao.pedido, ...(s.pedido ?? {}) },
+  };
 }
 
 /** cache(): layout (metadata) e página leem o mesmo dado uma vez por requisição. */
 export const getSite = cache(async function getSite(): Promise<Site> {
   try {
-    if (temBlob()) {
-      const { blobs } = await list({ prefix: KEY, limit: 1 });
-      if (!blobs[0]) return padrao;
-      const r = await fetch(`${blobs[0].url}?v=${new Date(blobs[0].uploadedAt).getTime()}`, { cache: "no-store" });
-      return normalizar(await r.json());
+    const banco = await kv();
+    if (banco) {
+      const json = await banco.get("site", "text");
+      return json ? normalizar(JSON.parse(json)) : padrao;
     }
-    return normalizar(JSON.parse(await fs.readFile(LOCAL, "utf8")));
+    const fs = await import("fs/promises");
+    return normalizar(JSON.parse(await fs.readFile(LOCAL(), "utf8")));
   } catch {
     return padrao;
   }
@@ -31,23 +52,33 @@ export const getSite = cache(async function getSite(): Promise<Site> {
 
 export async function saveSite(site: Site) {
   const json = JSON.stringify(site);
-  if (temBlob()) {
-    await put(KEY, json, { access: "public", contentType: "application/json", addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60 });
-  } else {
-    await fs.mkdir(path.dirname(LOCAL), { recursive: true });
-    await fs.writeFile(LOCAL, json);
-  }
+  const banco = await kv();
+  if (banco) return banco.put("site", json);
+  const fs = await import("fs/promises");
+  await fs.mkdir(`${process.cwd()}/.data`, { recursive: true });
+  await fs.writeFile(LOCAL(), json);
 }
 
+/** Guarda uma foto e devolve o endereço público dela. */
 export async function uploadFoto(file: File): Promise<string> {
-  const nome = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
-  if (temBlob()) {
-    const b = await put(`fotos/${nome}`, file, { access: "public", addRandomSuffix: true });
-    return b.url;
+  const nome = `${Date.now()}-${file.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-")}`;
+  const dados = await file.arrayBuffer();
+  const banco = await kv();
+  if (banco) {
+    await banco.put(`foto:${nome}`, dados, { metadata: { tipo: file.type } });
+    return `/fotos/${nome}`;
   }
-  const dir = path.join(process.cwd(), "public", "uploads");
+  const fs = await import("fs/promises");
+  const dir = `${process.cwd()}/public/uploads`;
   await fs.mkdir(dir, { recursive: true });
-  const final = `${Date.now()}-${nome}`;
-  await fs.writeFile(path.join(dir, final), Buffer.from(await file.arrayBuffer()));
-  return `/uploads/${final}`;
+  await fs.writeFile(`${dir}/${nome}`, Buffer.from(dados));
+  return `/uploads/${nome}`;
+}
+
+/** Lê uma foto guardada no KV (usado pela rota /fotos/[nome]). */
+export async function lerFoto(nome: string) {
+  const banco = await kv();
+  if (!banco) return null;
+  const { value, metadata } = await banco.getWithMetadata<{ tipo?: string }>(`foto:${nome}`, "arrayBuffer");
+  return value ? { dados: value, tipo: metadata?.tipo ?? "application/octet-stream" } : null;
 }
