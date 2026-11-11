@@ -36,7 +36,7 @@ export const padrao: Site = {
   empresa: {
     nome: "MRD Andaimes",
     slogan: "Locação de andaimes com entrega em Taubaté e região",
-    whatsapp: "5512999999999",
+    whatsapp: "5512982987677",
     endereco: "Taubaté - SP",
     horario: "Segunda a sexta, 7h às 17h. Sábado, 7h às 12h.",
     instagram: "",
