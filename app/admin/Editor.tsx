@@ -100,6 +100,9 @@ export default function Editor({ inicial }: { inicial: Site }) {
           <label>Pedido mínimo de painéis
             <input type="number" min={0} step={1} value={site.pedido.minimoPaineis} onChange={(e) => setSite({ ...site, pedido: { ...site.pedido, minimoPaineis: Math.max(0, Number(e.target.value)) } })} />
           </label>
+          <label>Altura máxima por torre (m)
+            <input type="number" min={1} step={1} value={site.pedido.alturaMaxima} onChange={(e) => setSite({ ...site, pedido: { ...site.pedido, alturaMaxima: Math.max(1, Number(e.target.value)) } })} />
+          </label>
           <label>Mínimo de cada tamanho de painel
             <input type="number" min={0} step={1} value={site.pedido.minimoPorTamanho} onChange={(e) => setSite({ ...site, pedido: { ...site.pedido, minimoPorTamanho: Math.max(0, Number(e.target.value)) } })} />
           </label>

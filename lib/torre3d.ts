@@ -35,6 +35,8 @@ export type Montagem = {
   total: number;
   /** Painéis que não encaixam na alternância da torre mista. */
   sobra: { largura: number; paineis: number }[];
+  /** Pranchas pedidas que não têm nível com vão do tamanho delas (ou não cabem mais). */
+  semLugar: number;
 };
 
 export type Parte =
@@ -62,6 +64,10 @@ export function larguraDe(nome = "") {
 const soma = (itens: Item[], qtd: Record<string, number>, f: (i: Item) => boolean) =>
   itens.filter(f).reduce((s, i) => s + (qtd[i.id] ?? 0), 0);
 
+const LARG_PRANCHA = 0.3;
+/** Quantas pranchas de ~30 cm cabem lado a lado ao longo de um painel desta largura. */
+export const pranchasPorNivel = (largura: number) => Math.max(1, Math.floor((largura + 0.04) / (LARG_PRANCHA + 0.04)));
+
 /** Divide n peças entre as torres (a primeira torre recebe as sobras). */
 const dividir = (n: number, torres: number, t: number) => Math.floor(n / torres) + (t < n % torres ? 1 : 0);
 
@@ -73,7 +79,21 @@ type TorrePlano = { niveis: number[]; frente: number; fundo: number };
  * sobem um nível a mais nas primeiras torres que conseguem recebê-los.
  * Torre mista alterna as larguras nível a nível; por isso nem todo par sempre encaixa (vira "sobra").
  */
+// O planejamento é a parte cara e se repete muito (cada botão testa a mudança); guarda os últimos resultados.
+const memoria = new Map<string, ReturnType<typeof planejarSemMemoria>>();
 function planejar(pares: Map<number, number>, T: number, padrao: number) {
+  const chave = `${T}|${padrao}|${[...pares].sort((a, b) => a[0] - b[0]).join(";")}`;
+  let r = memoria.get(chave);
+  if (!r) {
+    r = planejarSemMemoria(pares, T, padrao);
+    if (memoria.size > 300) memoria.delete(memoria.keys().next().value!);
+    memoria.set(chave, r);
+  }
+  // cópia: quem usa o plano não pode alterar o que está guardado
+  return { torres: r.torres.map((t) => ({ ...t, niveis: [...t.niveis] })), sobra: new Map(r.sobra) };
+}
+
+function planejarSemMemoria(pares: Map<number, number>, T: number, padrao: number) {
   const larguras = [...pares.keys()].filter((w) => (pares.get(w) ?? 0) > 0).sort((x, y) => y - x);
   const L = larguras[0] ?? padrao;
   const S = larguras[larguras.length - 1] ?? padrao;
@@ -164,19 +184,31 @@ export function montar(itens: Item[], qtd: Record<string, number>, torres: numbe
   const rodinhas = soma(itens, qtd, (i) => i.grupo === "base" && /rod/i.test(i.nome));
   const sapatas = soma(itens, qtd, (i) => i.grupo === "base" && !/rod/i.test(i.nome));
 
-  // cada prancha vai para uma torre que tenha um nível com vão do tamanho dela (revezando entre as torres)
-  const vaos = (p: TorrePlano) => p.niveis.map((w) => (p.frente === p.fundo ? w : w === p.frente ? p.fundo : p.frente));
+  // cada prancha vai para uma torre que ainda tenha lugar num nível com vão do tamanho dela (revezando entre as torres)
+  const capacidade = plano.torres.map((p) => {
+    const cap = new Map<number, number>();
+    for (const w of p.niveis) {
+      const vao = p.frente === p.fundo ? w : w === p.frente ? p.fundo : p.frente;
+      cap.set(vao, (cap.get(vao) ?? 0) + pranchasPorNivel(w));
+    }
+    return cap;
+  });
   const pranchas: number[][] = plano.torres.map(() => []);
+  let semLugar = 0;
   let vez = 0;
   for (const c of plataformas) {
-    for (let k = 0; k < plano.torres.length; k++) {
+    let ok = false;
+    for (let k = 0; k < plano.torres.length && !ok; k++) {
       const t = (vez + k) % plano.torres.length;
-      if (vaos(plano.torres[t]).some((v) => Math.abs(v - c) < 0.01)) {
+      const vao = [...capacidade[t].keys()].find((v) => Math.abs(v - c) < 0.01);
+      if (vao !== undefined && capacidade[t].get(vao)! > 0) {
+        capacidade[t].set(vao, capacidade[t].get(vao)! - 1);
         pranchas[t].push(c);
         vez = t + 1;
-        break;
+        ok = true;
       }
     }
+    if (!ok) semLugar++;
   }
 
   const lista: TorreMontagem[] = plano.torres.map((p, t) => ({
@@ -189,7 +221,7 @@ export function montar(itens: Item[], qtd: Record<string, number>, torres: numbe
   }));
   const alturas = plano.torres.map((t) => t.niveis.length);
   const sobra = [...plano.sobra.entries()].filter(([, p]) => p > 0).sort((a, b) => a[0] - b[0]).map(([largura, p]) => ({ largura, paineis: p * 2 }));
-  return { altura: Math.max(0, ...alturas), alturas, niveisTotal: alturas.reduce((s, h) => s + h, 0), torres: lista.slice(0, VISIVEIS), total: torres, sobra };
+  return { altura: Math.max(0, ...alturas), alturas, niveisTotal: alturas.reduce((s, h) => s + h, 0), torres: lista.slice(0, VISIVEIS), total: torres, sobra, semLugar };
 }
 
 type Ponto3 = [number, number, number]; // [f, y, d]
@@ -307,7 +339,7 @@ export function desenhar(m: Montagem): Desenho {
 
       // plataformas: pranchas de ~30 cm apoiadas entre os dois painéis do nível, do topo para baixo.
       // Cada prancha tem o próprio comprimento e só vai para um nível cujo vão é do tamanho dela.
-      const LARG = 0.3;
+      const LARG = LARG_PRANCHA;
       const e = 0.05;
       const resta = [...t.plataformas];
       for (let n = feitos - 1; n >= 0 && resta.length; n--) {
@@ -315,7 +347,7 @@ export function desenhar(m: Montagem): Desenho {
         const frente = naFrente(n);
         const fila = frente ? A : B; // as pranchas se enfileiram ao longo do painel
         const vao = frente ? B : A; // e atravessam de um painel ao outro
-        const porNivel = Math.max(1, Math.floor((fila + 0.04) / (LARG + 0.04)));
+        const porNivel = pranchasPorNivel(fila);
         const folga = (fila - porNivel * LARG) / (porNivel + 1);
         const y = hb + n + 0.9;
         // u: posição ao longo do painel; v: atravessando o vão

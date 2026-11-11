@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { waLink, type Item, type Site } from "../lib/site";
 import Torre3D from "./Torre3D";
 import { montar } from "../lib/torre3d";
-import { gruposDe, mudar, mudarTorres, quantidadesIniciais, statusGrupo, sugerida } from "../lib/calculo";
+import { gruposDe, mudar, mudarTorres, podeMudar, podeMudarTorres, quantidadesIniciais, statusGrupo, sugerida } from "../lib/calculo";
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
 const AJUDA_GRUPO: Record<string, string> = {
@@ -11,14 +11,14 @@ const AJUDA_GRUPO: Record<string, string> = {
   base: "Pode misturar sapatas e rodinhas.",
 };
 
-function Stepper({ rotulo, valor, min, max, onChange, sufixo }: { rotulo: string; valor: number; min: number; max: number; onChange: (v: number) => void; sufixo?: string }) {
+function Stepper({ rotulo, valor, podeMenos, podeMais, onChange, sufixo }: { rotulo: string; valor: number; podeMenos: boolean; podeMais: boolean; onChange: (v: number) => void; sufixo?: string }) {
   return (
     <div className="stepper">
       <span className="stepper-rotulo" id={`r-${rotulo}`}>{rotulo}</span>
       <div className="stepper-ctl" role="group" aria-labelledby={`r-${rotulo}`}>
-        <button type="button" aria-label={`Diminuir ${rotulo.toLowerCase()}`} disabled={valor <= min} onClick={() => onChange(valor - 1)}>−</button>
+        <button type="button" aria-label={`Diminuir ${rotulo.toLowerCase()}`} disabled={!podeMenos} onClick={() => onChange(valor - 1)}>−</button>
         <output aria-live="polite">{valor}{sufixo && <small>{sufixo}</small>}</output>
-        <button type="button" aria-label={`Aumentar ${rotulo.toLowerCase()}`} disabled={valor >= max} onClick={() => onChange(valor + 1)}>+</button>
+        <button type="button" aria-label={`Aumentar ${rotulo.toLowerCase()}`} disabled={!podeMais} onClick={() => onChange(valor + 1)}>+</button>
       </div>
     </div>
   );
@@ -41,8 +41,19 @@ export default function Calculadora({ site }: { site: Site }) {
 
   // mudar torres reajusta a lista sem apagar o que a pessoa escolheu
   const mudarQtdTorres = (t: number) => {
+    if (!podeMudarTorres(torres, t - torres)) return;
     setQtd(mudarTorres(site.itens, qtd, torres, t, site.pedido));
     setTorres(t);
+  };
+  const pode = (it: Item, d: number, min: number) => podeMudar(site.itens, qtd, it, d, min, torres, site.pedido);
+  /** Por que o + está travado (aparece embaixo do nome). */
+  const motivo = (it: Item, q: number) => {
+    if (it.grupo === "largura") return `Altura máxima: ${site.pedido.alturaMaxima} m`;
+    if (it.grupo) return "";
+    if (/plataforma/i.test(it.nome)) return q === 0 ? "Não cabe nesta torre" : "Não cabe mais";
+    if (/escada/i.test(it.nome)) return "Já cobre toda a altura";
+    if (it.regra === "por_metro") return "Máximo de 2 por metro";
+    return "";
   };
   const ajustar = (it: Item, d: number, min = 0) => setQtd(mudar(site.itens, qtd, it, d, min, torres, site.pedido));
 
@@ -62,17 +73,20 @@ export default function Calculadora({ site }: { site: Site }) {
   // função (não componente) para não remontar as linhas a cada render
   const linha = (it: Item, min = 0) => {
     const q = qtd[it.id] ?? 0;
+    const podeMenos = pode(it, -1, min);
+    const podeMais = pode(it, 1, min);
+    const aviso = !podeMais ? motivo(it, q) : "";
     return (
       <li key={it.id} className={q === 0 ? "zero" : ""}>
         <span className="lista-nome">
           {it.nome.replace(/\s*\(.*\)\s*$/, "")}
           {/\(.*\)/.test(it.nome) && <small>{it.nome.match(/\((.*)\)/)![1]}</small>}
-          {it.regra === "opcional" && q === 0 && <small>se precisar</small>}
+          {aviso ? <small className="lista-aviso">{aviso}</small> : it.regra === "opcional" && q === 0 && <small>se precisar</small>}
         </span>
         <span className="lista-qtd">
-          {it.ajustavel && <button type="button" aria-label={`Menos ${it.nome}`} disabled={q <= min} onClick={() => ajustar(it, -1, min)}>−</button>}
+          {it.ajustavel && <button type="button" aria-label={`Menos ${it.nome}`} disabled={!podeMenos} onClick={() => ajustar(it, -1, min)}>−</button>}
           <b>{q}</b>
-          {it.ajustavel && <button type="button" aria-label={`Mais ${it.nome}`} onClick={() => ajustar(it, 1, min)}>+</button>}
+          {it.ajustavel && <button type="button" aria-label={`Mais ${it.nome}`} disabled={!podeMais} onClick={() => ajustar(it, 1, min)}>+</button>}
         </span>
       </li>
     );
@@ -86,7 +100,7 @@ export default function Calculadora({ site }: { site: Site }) {
 
       <div className="calc-painel">
         <div className="calc-steppers">
-          <Stepper rotulo="Torres" valor={torres} min={1} max={20} onChange={mudarQtdTorres} />
+          <Stepper rotulo="Torres" valor={torres} podeMenos={podeMudarTorres(torres, -1)} podeMais={podeMudarTorres(torres, 1)} onChange={mudarQtdTorres} />
           <div className="stepper altura-lida">
             <span className="stepper-rotulo">Altura</span>
             <output aria-live="polite">{altura}<small> m</small></output>

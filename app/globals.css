@@ -153,6 +153,7 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
 .lista-nome { min-width: 0; font-weight: 500; }
 .lista-nome small { display: block; font-size: .82rem; color: var(--suave); font-weight: 400; }
 .lista li.zero .lista-nome { color: var(--suave); }
+.lista-nome small.lista-aviso { color: var(--amarelo); font-weight: 600; }
 .lista-qtd { display: flex; align-items: center; flex-shrink: 0; }
 .lista-qtd button { width: 44px; height: 44px; font-size: 1.4rem; }
 .lista-qtd button:hover:not(:disabled) { background: var(--concreto); }

@@ -28,7 +28,7 @@ export type Site = {
   };
   cidades: string[];
   /** Regras de pedido dos painéis de andaime (grupo "largura"). */
-  pedido: { minimoPaineis: number; minimoPorTamanho: number };
+  pedido: { minimoPaineis: number; minimoPorTamanho: number; alturaMaxima: number };
   itens: Item[];
   servicos: { titulo: string; descricao: string }[];
   obras: { foto: string; legenda: string }[];
@@ -46,7 +46,7 @@ export const padrao: Site = {
     email: "",
     logo: "/logo-icone.png",
   },
-  pedido: { minimoPaineis: 2, minimoPorTamanho: 2 },
+  pedido: { minimoPaineis: 2, minimoPorTamanho: 2, alturaMaxima: 20 },
   cidades: ["Taubaté", "Tremembé", "Pindamonhangaba", "Caçapava", "São José dos Campos"],
   itens: [
     { id: "andaime-1m", nome: "Andaime 1 m", descricao: "Painel tubular de 1 m de largura. Ideal para espaços estreitos.", foto: "/produtos/andaime-1m.webp", categoria: "andaime", grupo: "largura", regra: "por_metro", quantidade: 2, ajustavel: true },
