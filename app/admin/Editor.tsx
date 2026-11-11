@@ -83,6 +83,7 @@ export default function Editor({ inicial }: { inicial: Site }) {
           <label className="largo">Frase de destaque<input value={site.empresa.slogan} onChange={(e) => emp("slogan", e.target.value)} /></label>
           <label>Endereço<input value={site.empresa.endereco} onChange={(e) => emp("endereco", e.target.value)} /></label>
           <label>Horário<input value={site.empresa.horario} onChange={(e) => emp("horario", e.target.value)} /></label>
+          <label>E-mail<input type="email" autoComplete="off" spellCheck={false} value={site.empresa.email} onChange={(e) => emp("email", e.target.value)} /></label>
           <label>Link do Instagram<input value={site.empresa.instagram} onChange={(e) => emp("instagram", e.target.value)} /></label>
           <label>Link do Google (perfil/avaliações)<input value={site.empresa.google} onChange={(e) => emp("google", e.target.value)} /></label>
           <label className="largo">Cidades atendidas (separadas por vírgula)

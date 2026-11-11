@@ -50,7 +50,8 @@ export default async function Home() {
       <header className="topo">
         <div className="wrap topo-in">
           <a href="#" className="marca" translate="no">
-            {empresa.logo ? <img src={empresa.logo} alt={empresa.nome} height={40} width={140} /> : empresa.nome}
+            {empresa.logo && <img src={empresa.logo} alt="" width={29} height={42} />}
+            <span>{empresa.nome.toUpperCase()}</span>
           </a>
           <nav aria-label="Principal">
             <a href="#calculadora">Calculadora</a>
@@ -67,9 +68,10 @@ export default async function Home() {
       <main id="conteudo">
         <section className="hero">
           <div className="wrap">
-            <h1>Aluguel de andaimes em {regiao} e região</h1>
+            <h1>Aluguel de andaimes <span>em {regiao} e região</span></h1>
             <p>Monte sua torre aqui embaixo, veja quantas peças você precisa e mande o pedido direto no WhatsApp. A gente entrega na sua obra.</p>
           </div>
+          <div className="hero-barra" aria-hidden="true" />
           <div className="zebra" aria-hidden="true" />
         </section>
 
@@ -145,6 +147,7 @@ export default async function Home() {
             <div className="contato-card">
               {empresa.endereco && <p><b>Endereço</b>{empresa.endereco}</p>}
               {empresa.horario && <p><b>Horário</b>{empresa.horario}</p>}
+              {empresa.email && <p><b>E-mail</b><a href={`mailto:${empresa.email}`}>{empresa.email}</a></p>}
               <a href={wa} className="btn btn-wa btn-cheio" target="_blank" rel="noopener"><IconeWa /> Falar no WhatsApp</a>
               {(empresa.instagram || empresa.google) && (
                 <div className="redes">
@@ -162,7 +165,7 @@ export default async function Home() {
       </footer>
 
       <nav className="barra-movel" aria-label="Ações rápidas">
-        <a href="#calculadora" className="btn btn-claro">Calcular</a>
+        <a href="#calculadora" className="btn btn-marca">Calcular</a>
         <a href={wa} className="btn btn-wa" target="_blank" rel="noopener"><IconeWa size={20} /> WhatsApp</a>
       </nav>
     </>

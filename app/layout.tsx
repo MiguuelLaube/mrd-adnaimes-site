@@ -1,10 +1,10 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Archivo } from "next/font/google";
 import { getSite } from "../lib/store";
 
-const corpo = Barlow({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--f-corpo", display: "swap" });
-const titulo = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700"], variable: "--f-titulo", display: "swap" });
+// Archivo com eixo de largura: o corpo usa a largura normal e os títulos usam a versão larga, como no logo.
+const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--f-corpo", display: "swap" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const { empresa, cidades } = await getSite();
@@ -16,11 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = { themeColor: "#25303a", width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${corpo.variable} ${titulo.variable}`}>
+    <html lang="pt-BR" className={archivo.variable}>
       <body>{children}</body>
     </html>
   );
