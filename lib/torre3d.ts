@@ -164,11 +164,26 @@ export function montar(itens: Item[], qtd: Record<string, number>, torres: numbe
   const rodinhas = soma(itens, qtd, (i) => i.grupo === "base" && /rod/i.test(i.nome));
   const sapatas = soma(itens, qtd, (i) => i.grupo === "base" && !/rod/i.test(i.nome));
 
+  // cada prancha vai para uma torre que tenha um nível com vão do tamanho dela (revezando entre as torres)
+  const vaos = (p: TorrePlano) => p.niveis.map((w) => (p.frente === p.fundo ? w : w === p.frente ? p.fundo : p.frente));
+  const pranchas: number[][] = plano.torres.map(() => []);
+  let vez = 0;
+  for (const c of plataformas) {
+    for (let k = 0; k < plano.torres.length; k++) {
+      const t = (vez + k) % plano.torres.length;
+      if (vaos(plano.torres[t]).some((v) => Math.abs(v - c) < 0.01)) {
+        pranchas[t].push(c);
+        vez = t + 1;
+        break;
+      }
+    }
+  }
+
   const lista: TorreMontagem[] = plano.torres.map((p, t) => ({
     ...p,
     // travessas: uma por nível de cada torre, as extras ficam na primeira
     travessas: Math.min(p.niveis.length, Math.max(0, travessas - plano.torres.slice(0, t).reduce((s, x) => s + x.niveis.length, 0))),
-    plataformas: plataformas.filter((_, i) => i % torres === t),
+    plataformas: pranchas[t] ?? [],
     escadas: dividir(escadas, torres, t),
     base: t < sapatas ? "sapata" : t < sapatas + rodinhas ? "rodinha" : "nenhuma",
   }));
@@ -291,11 +306,12 @@ export function desenhar(m: Montagem): Desenho {
       }
 
       // plataformas: pranchas de ~30 cm apoiadas entre os dois painéis do nível, do topo para baixo.
-      // Cada prancha tem o próprio comprimento; ela vai de preferência para o nível cujo vão é do tamanho dela.
+      // Cada prancha tem o próprio comprimento e só vai para um nível cujo vão é do tamanho dela.
       const LARG = 0.3;
       const e = 0.05;
       const resta = [...t.plataformas];
       for (let n = feitos - 1; n >= 0 && resta.length; n--) {
+        if (!resta.some((c) => Math.abs(c - (naFrente(n) ? B : A)) < 0.01)) continue;
         const frente = naFrente(n);
         const fila = frente ? A : B; // as pranchas se enfileiram ao longo do painel
         const vao = frente ? B : A; // e atravessam de um painel ao outro
@@ -304,8 +320,8 @@ export function desenhar(m: Montagem): Desenho {
         const y = hb + n + 0.9;
         // u: posição ao longo do painel; v: atravessando o vão
         const q = (u: number, v: number, yy: number) => (frente ? P(u, yy, v) : P(v, yy, u));
-        // nível misto: só pega pranchas do tamanho do vão, se houver alguma; senão pega as que restam
-        const serve = resta.some((c) => Math.abs(c - vao) < 0.01) ? (c: number) => Math.abs(c - vao) < 0.01 : () => true;
+        // só entra prancha que alcança os dois painéis deste nível
+        const serve = (c: number) => Math.abs(c - vao) < 0.01;
         for (let k = 0; k < porNivel; k++) {
           const idx = resta.findIndex(serve);
           if (idx < 0) break;
