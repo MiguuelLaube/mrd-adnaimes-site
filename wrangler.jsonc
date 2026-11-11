@@ -7,6 +7,6 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "mrd-andaimes" }],
   // configurações do painel e fotos enviadas
-  "kv_namespaces": [{ "binding": "DADOS", "id": "PREENCHER_COM_O_ID_DO_KV" }],
+  "kv_namespaces": [{ "binding": "DADOS" }],
   "observability": { "enabled": true }
 }

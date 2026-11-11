@@ -15,14 +15,19 @@ Site de locação de andaimes da MRD Andaimes (Taubaté e região). Next.js, pen
 - Escadas até cobrir a altura; plataformas só onde o vão comporta.
 - Altura máxima por torre configurável no painel.
 
-## Variáveis de ambiente (Vercel → Settings → Environment Variables)
+## Publicar na Cloudflare (Workers)
 
-| Nome | Para quê |
-| --- | --- |
-| `ADMIN_PASSWORD` | Senha do painel `/admin` |
-| `BLOB_READ_WRITE_TOKEN` | Criada ao conectar um **Blob Store** (Storage → Blob). Guarda configurações e fotos. |
+O projeto usa o [OpenNext](https://opennext.js.org/cloudflare) para rodar o Next.js nos Workers.
+O painel guarda configurações e fotos no **Workers KV** (binding `DADOS`, criado automaticamente no primeiro deploy).
 
-Sem o Blob, o site usa os dados padrão de `lib/site.ts` (e, rodando local, salva em `.data/`).
+Pelo painel da Cloudflare (publica a cada push no GitHub):
+
+1. **Workers & Pages → Create → Import a repository** e escolha este repositório.
+2. **Build command:** `npx opennextjs-cloudflare build`
+3. **Deploy command:** `npx opennextjs-cloudflare deploy`
+4. Em **Settings → Variables and Secrets**, crie o segredo `ADMIN_PASSWORD` (senha do painel `/admin`).
+
+Ou pelo terminal: `npm run deploy` (pede login no wrangler).
 
 ## Rodar local
 
