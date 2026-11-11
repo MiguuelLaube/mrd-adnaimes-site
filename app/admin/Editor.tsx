@@ -96,6 +96,14 @@ export default function Editor({ inicial }: { inicial: Site }) {
 
       <section className="card">
         <h2>Equipamentos e regras da calculadora</h2>
+        <div className="grade">
+          <label>Pedido mínimo de painéis
+            <input type="number" min={0} step={1} value={site.pedido.minimoPaineis} onChange={(e) => setSite({ ...site, pedido: { ...site.pedido, minimoPaineis: Math.max(0, Number(e.target.value)) } })} />
+          </label>
+          <label>Mínimo de cada tamanho de painel
+            <input type="number" min={0} step={1} value={site.pedido.minimoPorTamanho} onChange={(e) => setSite({ ...site, pedido: { ...site.pedido, minimoPorTamanho: Math.max(0, Number(e.target.value)) } })} />
+          </label>
+        </div>
         <p className="ajuda">
           Itens com o mesmo <b>grupo</b> somam para um mínimo comum e o cliente pode misturar (ex.: <i>largura</i> para os painéis de 1 m e 1,5 m,
           <i> base</i> para sapatas e rodinhas). Deixe o grupo vazio para itens independentes.

@@ -165,10 +165,29 @@ export function desenhar(m: Montagem): Desenho {
     };
     if (feitos > 0) {
       for (let i = 0; i < Math.min(t.travessas, feitos); i++) grupos.push(trav(i, ox));
-      for (let j = 0; j < Math.min(t.plataformas, feitos); j++) {
-        const y = hb + feitos - j - 0.1;
-        const pts = [P(ox, y, 0), P(ox + w, y, 0), P(ox + w, y, PROF), P(ox, y, PROF)];
-        grupos.push({ key: `${id}-plat-${j}-${w}`, atraso: 0.1, partes: [{ tipo: "poligono", cls: "plataforma", pts }] });
+      // plataformas: pranchas de ~30 cm apoiadas de um painel ao outro, enchendo o piso do topo para baixo
+      const LARG = 0.3;
+      const porNivel = Math.max(1, Math.floor((w + 0.04) / (LARG + 0.04)));
+      const folga = (w - porNivel * LARG) / (porNivel + 1);
+      for (let j = 0; j < Math.min(t.plataformas, feitos * porNivel); j++) {
+        const nivel = feitos - 1 - Math.floor(j / porNivel);
+        const y = hb + nivel + 0.9; // em cima do travessão do painel
+        const xa = ox + folga + (j % porNivel) * (LARG + folga);
+        const xb = xa + LARG;
+        const e = 0.05; // espessura
+        const z0 = -0.04;
+        const z1 = PROF + 0.04;
+        grupos.push({
+          key: `${id}-plat-${j}-${w}`,
+          atraso: 0.08,
+          partes: [
+            { tipo: "poligono", cls: "plataforma-lado", pts: [P(xa, y, z1), P(xb, y, z1), P(xb, y - e, z1), P(xa, y - e, z1)] },
+            { tipo: "poligono", cls: "plataforma-lado", pts: [P(xb, y, z0), P(xb, y, z1), P(xb, y - e, z1), P(xb, y - e, z0)] },
+            { tipo: "poligono", cls: "plataforma", pts: [P(xa, y, z0), P(xb, y, z0), P(xb, y, z1), P(xa, y, z1)] },
+            L("gancho", [xa + 0.05, y, z1], [xa + 0.05, y - 0.08, z1]),
+            L("gancho", [xb - 0.05, y, z1], [xb - 0.05, y - 0.08, z1]),
+          ],
+        });
       }
     }
     for (let n = 0; n < feitos; n++) {

@@ -11,7 +11,7 @@ const temBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 
 /** Mescla com o padrão para que campos novos nunca fiquem indefinidos. */
 function normalizar(s: Partial<Site>): Site {
-  return { ...padrao, ...s, empresa: { ...padrao.empresa, ...(s.empresa ?? {}) } };
+  return { ...padrao, ...s, empresa: { ...padrao.empresa, ...(s.empresa ?? {}) }, pedido: { ...padrao.pedido, ...(s.pedido ?? {}) } };
 }
 
 /** cache(): layout (metadata) e página leem o mesmo dado uma vez por requisição. */

@@ -122,7 +122,9 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
 .torre3d .tubo { stroke: var(--aco); stroke-width: 3.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .torre3d .tubo.fino { stroke-width: 2.2; }
 .torre3d .travessa { stroke: #8a8f94; stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.torre3d .plataforma { fill: #7d848b; fill-opacity: .92; stroke: #4a4f54; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.torre3d .plataforma { fill: #8b9298; stroke: #4a4f54; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.torre3d .plataforma-lado { fill: #5b6167; }
+.torre3d .gancho { stroke: #c8a24a; stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .torre3d .escada { stroke: var(--amarelo); stroke-width: 2.6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .torre3d .degrau { stroke: var(--amarelo); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
 .torre3d .rosca { stroke: #6b6f73; stroke-width: 2.6; stroke-dasharray: 2 1.5; vector-effect: non-scaling-stroke; }
