@@ -2,7 +2,9 @@
  * Montagem da torre em 3D (projeção isométrica), sem depender de React.
  * O site (com Motion) e a prévia (JS puro) desenham a mesma lista de grupos.
  *
- * Eixos em metros: x = largura do painel, y = altura, z = profundidade (entre os dois painéis).
+ * Eixos em metros: x = largura do painel (vira a profundidade na tela), y = altura,
+ * z = vão entre os dois painéis (vira a frente da torre). Os painéis ficam nas laterais
+ * e a travessa aparece como uma diagonal na frente, como nas torres reais.
  */
 import type { Item } from "./site";
 
@@ -24,15 +26,17 @@ export type Parte =
 export type Grupo = { key: string; atraso: number; partes: Parte[] };
 export type Desenho = { grupos: Grupo[]; viewBox: string };
 
-const PROF = 1; // distância entre os painéis da frente e de trás
+const PROF = 1.5; // vão entre os dois painéis (comprimento da travessa)
 const ALTURA_BASE = 0.32;
 const VAO = 0.9; // espaço entre torres vizinhas
 const VISIVEIS = 3;
 const U = 48; // px por metro antes do viewBox escalar
-// Projeção dimétrica: painéis quase de frente (x a 14°) e a profundidade recuando para a direita (z a 32°, encurtada).
-const AX = (14 * Math.PI) / 180;
-const AZ = (32 * Math.PI) / 180;
-const KZ = 0.62;
+// Projeção oblíqua: a frente (z) quase reta e a profundidade (x) recuando para cima e à direita, encurtada.
+const AF = (6 * Math.PI) / 180;
+const AP = (38 * Math.PI) / 180;
+const KP = 0.55;
+/** Origem da torre que está sendo desenhada: x local vira profundidade, z ganha o deslocamento da torre na frente. */
+const eixo = { ox: 0, of: 0 };
 
 /** Largura em metros a partir do nome ("Andaime 1,5 m" → 1.5). */
 export function larguraDe(nome = "") {
@@ -81,11 +85,12 @@ export function montar(itens: Item[], qtd: Record<string, number>, altura: numbe
   return { niveis: altura, torres: lista.slice(0, VISIVEIS), total: torres };
 }
 
-/** Projeção: metros → px. z positivo vem para perto de quem olha (para baixo e à esquerda). */
-const P = (x: number, y: number, z: number): [number, number] => [
-  +((x * Math.cos(AX) - z * KZ * Math.cos(AZ)) * U).toFixed(1),
-  +((x * Math.sin(AX) + z * KZ * Math.sin(AZ) - y) * U).toFixed(1),
-];
+/** Projeção: metros → px. */
+const P = (x: number, y: number, z: number): [number, number] => {
+  const d = x - eixo.ox;
+  const f = z + eixo.of;
+  return [+((f * Math.cos(AF) + d * KP * Math.cos(AP)) * U).toFixed(1), +((f * Math.sin(AF) - d * KP * Math.sin(AP) - y) * U).toFixed(1)];
+};
 const L = (cls: string, a: [number, number, number], b: [number, number, number]): Parte => ({ tipo: "linha", cls, pts: [P(...a), P(...b)] });
 
 function painel(ox: number, y0: number, z: number, w: number): Parte[] {
@@ -103,11 +108,14 @@ export function desenhar(m: Montagem): Desenho {
   const grupos: Grupo[] = [];
   const hb = ALTURA_BASE;
   let ox = 0;
+  let of = 0;
   const pontos: [number, number][] = [];
 
   m.torres.forEach((t, ti) => {
     const w = Math.max(0.6, Math.min(2, t.largura));
     const id = `t${ti}`;
+    eixo.ox = ox;
+    eixo.of = of;
     const topo = hb + m.niveis;
     const feitos = Math.min(t.niveisMontados, m.niveis);
     const cantos: [number, number][] = [
@@ -161,10 +169,11 @@ export function desenhar(m: Montagem): Desenho {
     const trav = (i: number, x: number) => {
       const n = i % feitos;
       const y0 = hb + n;
-      return { key: `${id}-trav-${i}`, atraso: 0.1, partes: [L("travessa", [x, y0 + 0.15, 0], [x, y0 + 0.88, PROF]), L("travessa", [x, y0 + 0.88, 0], [x, y0 + 0.15, PROF])] };
+      const sobe = n % 2 === 0;
+      return { key: `${id}-trav-${i}`, atraso: 0.1, partes: [L("travessa", [x, y0 + (sobe ? 0.12 : 0.9), 0], [x, y0 + (sobe ? 0.9 : 0.12), PROF])] };
     };
     if (feitos > 0) {
-      for (let i = 0; i < Math.min(t.travessas, feitos); i++) grupos.push(trav(i, ox));
+      for (let i = feitos; i < Math.min(t.travessas, feitos * 2); i++) grupos.push(trav(i, ox + w));
       // plataformas: pranchas de ~30 cm apoiadas de um painel ao outro, enchendo o piso do topo para baixo
       const LARG = 0.3;
       const porNivel = Math.max(1, Math.floor((w + 0.04) / (LARG + 0.04)));
@@ -194,8 +203,8 @@ export function desenhar(m: Montagem): Desenho {
       grupos.push({ key: `${id}-frente-${n}-${w}`, atraso: Math.min(n, 10) * 0.04 + 0.05, partes: painel(ox, hb + n, PROF, w) });
     }
     if (feitos > 0) {
-      for (let i = feitos; i < Math.min(t.travessas, feitos * 2); i++) grupos.push(trav(i, ox + w));
-      // escada presa na frente da torre: cada escada cobre 2 m
+      for (let i = 0; i < Math.min(t.travessas, feitos); i++) grupos.push(trav(i, ox));
+      // escada pendurada no painel lateral: cada escada cobre 2 m
       for (let k = 0; k < t.escadas; k++) {
         const y0 = hb + k * 2;
         if (y0 >= hb + feitos) break;
@@ -210,13 +219,15 @@ export function desenhar(m: Montagem): Desenho {
     }
 
     for (const [x, z] of cantos) for (const y of [0, topo]) pontos.push(P(x, y, z));
-    ox += w + VAO;
+    ox += w;
+    of += PROF + VAO;
   });
 
   // cota de altura à esquerda da primeira torre
-  const xC = -0.35;
-  const a = P(xC, hb, PROF);
-  const b = P(xC, hb + m.niveis, PROF);
+  eixo.ox = 0;
+  eixo.of = 0;
+  const a = P(0, hb, -0.4);
+  const b = P(0, hb + m.niveis, -0.4);
   grupos.push({
     key: "cota",
     atraso: 0,
@@ -229,7 +240,7 @@ export function desenhar(m: Montagem): Desenho {
   });
   pontos.push([a[0] - 30, a[1]], b);
   if (m.total > VISIVEIS) {
-    const p = P(ox - VAO + 0.3, hb + 0.5, PROF);
+    const p = P(0, hb + 0.5, of - VAO + 0.15);
     grupos.push({ key: "mais", atraso: 0, partes: [{ tipo: "texto", cls: "mais", pts: [p], texto: `+${m.total - VISIVEIS}` }] });
     pontos.push([p[0] + 30, p[1]]);
   }
