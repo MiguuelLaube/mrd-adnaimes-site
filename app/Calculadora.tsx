@@ -3,13 +3,11 @@ import { useMemo, useState } from "react";
 import { waLink, type Item, type Site } from "../lib/site";
 import Torre3D from "./Torre3D";
 import { montar } from "../lib/torre3d";
-import { gruposDe, passo, quantidadesIniciais, reajustar, statusGrupo, sugerida } from "../lib/calculo";
-
-const MAX = 30;
+import { gruposDe, mudar, mudarTorres, quantidadesIniciais, statusGrupo, sugerida } from "../lib/calculo";
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
 const AJUDA_GRUPO: Record<string, string> = {
-  largura: "Pode misturar 1 m e 1,5 m: os níveis se intercalam. Cada nível usa 2 painéis iguais.",
+  largura: "Cada 2 painéis sobem 1 m. Misturando 1 m e 1,5 m, os níveis se intercalam (use a mesma quantidade das duas).",
   base: "Pode misturar sapatas e rodinhas.",
 };
 
@@ -27,7 +25,6 @@ function Stepper({ rotulo, valor, min, max, onChange, sufixo }: { rotulo: string
 }
 
 export default function Calculadora({ site }: { site: Site }) {
-  const [altura, setAltura] = useState(6);
   const [torres, setTorres] = useState(1);
   const [qtd, setQtd] = useState(() => quantidadesIniciais(site.itens, 6, 1, site.pedido));
   const [servicos, setServicos] = useState<string[]>(site.servicos.map((s) => s.titulo));
@@ -37,19 +34,22 @@ export default function Calculadora({ site }: { site: Site }) {
   const grupos = useMemo(() => gruposDe(site.itens), [site.itens]);
   const soltos = site.itens.filter((it) => !it.grupo);
 
-  // mudar altura ou torres reajusta a lista sem apagar o que a pessoa escolheu
-  const mudarObra = (a: number, t: number) => {
-    setQtd(reajustar(site.itens, qtd, { altura, torres }, { altura: a, torres: t }, site.pedido));
-    setAltura(a);
+  // a altura não é escolhida: sai da quantidade de painéis
+  const montagem = montar(site.itens, qtd, torres);
+  const altura = montagem.altura;
+  const niveis = montagem.niveisTotal;
+
+  // mudar torres reajusta a lista sem apagar o que a pessoa escolheu
+  const mudarQtdTorres = (t: number) => {
+    setQtd(mudarTorres(site.itens, qtd, torres, t, site.pedido));
     setTorres(t);
   };
-  const ajustar = (it: Item, d: number, min = 0) => setQtd({ ...qtd, [it.id]: passo(it, qtd[it.id] ?? 0, d, min, site.pedido) });
-
+  const ajustar = (it: Item, d: number, min = 0) => setQtd(mudar(site.itens, qtd, it, d, min, torres, site.pedido));
 
   const texto = [
     "Olá! Gostaria de um orçamento de andaimes.",
     "",
-    `Altura da obra: ${altura} m`,
+    `Altura: ${[...new Set(montagem.alturas)].sort((a, b) => b - a).join(" e ")} m`,
     `Torres: ${torres}`,
     "",
     ...site.itens.filter((it) => (qtd[it.id] ?? 0) > 0).map((it) => `• ${qtd[it.id]}x ${it.nome}`),
@@ -81,19 +81,22 @@ export default function Calculadora({ site }: { site: Site }) {
   return (
     <div className="calc">
       <div className="calc-visual">
-        <Torre3D montagem={montar(site.itens, qtd, altura, torres)} />
+        <Torre3D montagem={montagem} />
       </div>
 
       <div className="calc-painel">
         <div className="calc-steppers">
-          <Stepper rotulo="Altura" valor={altura} min={1} max={MAX} sufixo=" m" onChange={(v) => mudarObra(v, torres)} />
-          <Stepper rotulo="Torres" valor={torres} min={1} max={20} onChange={(v) => mudarObra(altura, v)} />
+          <Stepper rotulo="Torres" valor={torres} min={1} max={20} onChange={mudarQtdTorres} />
+          <div className="stepper altura-lida">
+            <span className="stepper-rotulo">Altura</span>
+            <output aria-live="polite">{altura}<small> m</small></output>
+          </div>
         </div>
 
         <h3 className="lista-titulo">O que vai na sua obra</h3>
 
         {Object.entries(grupos).map(([g, its]) => {
-          const st = statusGrupo(site.itens, g, qtd, altura, torres, site.pedido);
+          const st = statusGrupo(site.itens, g, qtd, torres, site.pedido);
           return (
             <section key={g} className="grupo" aria-labelledby={`g-${g}`}>
               <header className="grupo-topo">
@@ -110,7 +113,7 @@ export default function Calculadora({ site }: { site: Site }) {
 
         {soltos.length > 0 && (
           <ul className="lista">
-            {soltos.map((it) => linha(it, sugerida(it, altura, torres)))}
+            {soltos.map((it) => linha(it, sugerida(it, niveis, torres)))}
           </ul>
         )}
 

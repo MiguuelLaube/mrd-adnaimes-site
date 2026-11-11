@@ -112,6 +112,8 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
 }
 .stepper-ctl button:hover:not(:disabled) { background: var(--linha); }
 .stepper-ctl button:disabled, .lista-qtd button:disabled { opacity: .25; cursor: default; }
+.altura-lida output { display: flex; align-items: center; justify-content: center; height: 48px; border-radius: 10px; border: 1.5px dashed var(--linha); font: 800 1.9rem/1 var(--f-titulo), system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.altura-lida output small { font-size: 1.1rem; margin-left: 2px; }
 .stepper-ctl output { text-align: center; font: 800 1.9rem/1 var(--f-titulo), system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .stepper-ctl output small { font-size: 1.1rem; margin-left: 1px; }
 

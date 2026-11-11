@@ -96,7 +96,7 @@ export default async function Home() {
         <section id="calculadora" className="secao secao-calc" aria-labelledby="t-calc">
           <div className="wrap">
             <h2 id="t-calc">Monte sua torre</h2>
-            <p className="lead">Escolha a altura e quantas torres. Cada peça que você adiciona aparece montada na torre.</p>
+            <p className="lead">Adicione os painéis e a torre sobe: cada 2 painéis são 1 m de altura. Cada peça que você coloca aparece montada.</p>
             <Calculadora site={site} />
           </div>
         </section>
