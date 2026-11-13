@@ -43,7 +43,7 @@ export const padrao: Site = {
     horario: "Segunda a sexta, 7h às 17h. Sábado, 7h às 12h.",
     instagram: "https://www.instagram.com/mrdandaimes/",
     google: "",
-    email: "",
+    email: "mrd.andaimes@gmail.com",
     logo: "/logo-icone.png",
   },
   pedido: { minimoPaineis: 2, minimoPorTamanho: 2, alturaMaxima: 20 },

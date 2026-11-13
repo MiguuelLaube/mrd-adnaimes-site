@@ -66,6 +66,7 @@ export default async function Home() {
     name: empresa.nome,
     description: empresa.slogan,
     telephone: `+${empresa.whatsapp.replace(/\D/g, "")}`,
+    ...(empresa.email ? { email: empresa.email } : {}),
     areaServed: site.cidades.map((c) => ({ "@type": "City", name: c })),
     ...(empresa.instagram || empresa.google ? { sameAs: [empresa.instagram, empresa.google].filter(Boolean) } : {}),
   };
