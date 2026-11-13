@@ -108,7 +108,7 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
 .calc-lateral { display: contents; }
 .calc-resumo { display: none; }
 .calc-visual {
-  grid-column: 1 / -1; grid-row: 1; height: 250px; position: sticky; top: calc(63px + env(safe-area-inset-top, 0px)); z-index: 5;
+  grid-column: 1 / -1; grid-row: 1; height: clamp(150px, 32svh, 250px); position: sticky; top: calc(63px + env(safe-area-inset-top, 0px)); z-index: 5;
   display: flex; align-items: flex-end; justify-content: center; border-radius: 10px; padding: 10px 8px 6px;
   background: radial-gradient(120% 90% at 50% 100%, #ffffff 0%, var(--concreto) 70%);
   box-shadow: 0 8px 16px -14px rgba(0, 0, 0, .5);
