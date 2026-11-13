@@ -41,7 +41,7 @@ export const padrao: Site = {
     whatsapp: "5512982987677",
     endereco: "Taubaté - SP",
     horario: "Segunda a sexta, 7h às 17h. Sábado, 7h às 12h.",
-    instagram: "",
+    instagram: "https://www.instagram.com/mrdandaimes/",
     google: "",
     email: "",
     logo: "/logo-icone.png",
