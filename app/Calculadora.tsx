@@ -57,6 +57,8 @@ export default function Calculadora({ site }: { site: Site }) {
   };
   const ajustar = (it: Item, d: number, min = 0) => setQtd(mudar(site.itens, qtd, it, d, min, torres, site.pedido));
 
+  const totalPecas = site.itens.reduce((soma, it) => soma + (qtd[it.id] ?? 0), 0);
+
   const texto = [
     "Olá! Gostaria de um orçamento de andaimes.",
     "",
@@ -69,6 +71,8 @@ export default function Calculadora({ site }: { site: Site }) {
     ...(nome ? [`Nome: ${nome}`] : []),
     ...(local ? [`Local da obra: ${local}`] : []),
   ].join("\n");
+
+  const pedidoHref = waLink(site.empresa.whatsapp, texto);
 
   // função (não componente) para não remontar as linhas a cada render
   const linha = (it: Item, min = 0) => {
@@ -94,8 +98,22 @@ export default function Calculadora({ site }: { site: Site }) {
 
   return (
     <div className="calc">
-      <div className="calc-visual">
-        <Torre3D montagem={montagem} />
+      {/* No computador esta coluna fica fixa: torre, resumo e botão sempre à vista enquanto a lista rola. */}
+      <div className="calc-lateral">
+        <div className="calc-visual">
+          <Torre3D montagem={montagem} />
+        </div>
+        <div className="calc-resumo">
+          <dl className="resumo-num">
+            <div><dt>Altura</dt><dd>{altura}<small> m</small></dd></div>
+            <div><dt>Torres</dt><dd>{torres}</dd></div>
+            <div><dt>Peças</dt><dd>{totalPecas}</dd></div>
+          </dl>
+          <a className="btn btn-wa btn-cheio" href={pedidoHref} target="_blank" rel="noopener">
+            Enviar pedido pelo WhatsApp
+          </a>
+          <p className="nota">Quantidades mínimas sugeridas. A gente confere tudo com você antes de fechar.</p>
+        </div>
       </div>
 
       <div className="calc-painel">
@@ -153,10 +171,10 @@ export default function Calculadora({ site }: { site: Site }) {
           </label>
         </div>
 
-        <a className="btn btn-wa btn-cheio" href={waLink(site.empresa.whatsapp, texto)} target="_blank" rel="noopener">
+        <a className="btn btn-wa btn-cheio so-movel" href={pedidoHref} target="_blank" rel="noopener">
           Enviar pedido pelo WhatsApp
         </a>
-        <p className="nota">Essas são as quantidades mínimas. A gente confere tudo com você antes de fechar.</p>
+        <p className="nota so-movel">Essas são as quantidades mínimas. A gente confere tudo com você antes de fechar.</p>
       </div>
     </div>
   );
