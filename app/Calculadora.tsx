@@ -7,7 +7,7 @@ import { gruposDe, motivoPainel, mudar, mudarTorres, podeMudar, podeMudarTorres,
 
 const ROTULO_GRUPO: Record<string, string> = { largura: "Painéis de andaime", base: "Base das torres" };
 const AJUDA_GRUPO: Record<string, string> = {
-  largura: "Cada 2 painéis sobem 1 m. Na torre mista os níveis alternam 1 m e 1,5 m, então as duas quantidades andam juntas.",
+  largura: "2 painéis = 1 m. Misturando 1 m e 1,5 m, os níveis se alternam.",
   base: "Pode misturar sapatas e rodinhas.",
 };
 
@@ -85,7 +85,7 @@ export default function Calculadora({ site }: { site: Site }) {
         <span className="lista-nome">
           {it.nome.replace(/\s*\(.*\)\s*$/, "")}
           {/\(.*\)/.test(it.nome) && <small>{it.nome.match(/\((.*)\)/)![1]}</small>}
-          {aviso ? <small className="lista-aviso">{aviso}</small> : it.regra === "opcional" && q === 0 && <small>se precisar</small>}
+          {aviso ? <small className="lista-aviso">{aviso}</small> : it.regra === "opcional" && q === 0 && <small className="lista-opc">se precisar</small>}
         </span>
         <span className="lista-qtd">
           {it.ajustavel && <button type="button" aria-label={`Menos ${it.nome}`} disabled={!podeMenos} onClick={() => ajustar(it, -1, min)}>−</button>}
@@ -144,11 +144,12 @@ export default function Calculadora({ site }: { site: Site }) {
         })}
 
         {soltos.length > 0 && (
-          <ul className="lista">
+          <ul className="lista lista-soltos">
             {soltos.map((it) => linha(it, sugerida(it, niveis, torres)))}
           </ul>
         )}
 
+        <div className="calc-extra">
         {site.servicos.length > 0 && (
           <div className="calc-servicos">
             {site.servicos.map((s) => (
@@ -169,6 +170,7 @@ export default function Calculadora({ site }: { site: Site }) {
             <span>Cidade ou bairro da obra</span>
             <input name="local" autoComplete="address-level2" placeholder="Ex.: Taubaté, Centro…" value={local} onChange={(e) => setLocal(e.target.value)} />
           </label>
+        </div>
         </div>
 
         <a className="btn btn-wa btn-cheio so-movel" href={pedidoHref} target="_blank" rel="noopener">

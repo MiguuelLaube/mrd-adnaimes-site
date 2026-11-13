@@ -307,16 +307,17 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
   .faixa span { display: block; }
 
   .secao { padding: 88px 0; }
-  .secao-calc { padding-top: 72px; }
+  .secao-calc { padding: 56px 0 64px; }
+  .secao-calc .secao-cab { margin-bottom: 24px; }
   .secao-cab { display: grid; grid-template-columns: 1fr minmax(0, 46ch); gap: 8px 48px; align-items: end; margin-bottom: 40px; }
   .secao-cab h2 { margin-bottom: 0; }
   .secao-cab .lead { margin: 0; }
 
   /* Calculadora: a coluna esquerda fica fixa e cabe na tela; só a lista da direita rola */
-  .calc { grid-template-columns: minmax(360px, 5fr) 6fr; gap: 36px; padding: 32px; align-items: start; border-radius: 20px; }
+  .calc { grid-template-columns: minmax(340px, 5fr) 6fr; gap: 28px; padding: 24px; align-items: start; border-radius: 20px; }
   .calc-lateral {
     display: flex; flex-direction: column; gap: 14px; grid-column: 1; grid-row: 1;
-    position: sticky; top: 96px; height: min(calc(100vh - 124px), 720px); min-height: 480px;
+    position: sticky; top: 92px; height: min(calc(100vh - 150px), 580px); min-height: 440px;
   }
   .calc-visual { position: relative; top: auto; flex: 1 1 auto; min-height: 0; height: auto; grid-column: auto; grid-row: auto; padding: 24px 16px 12px; box-shadow: none; border-radius: 14px; }
   .calc-resumo { display: block; flex-shrink: 0; background: var(--aco); color: #fff; border-radius: 14px; padding: 16px 18px 14px; }
@@ -325,7 +326,34 @@ h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 8px; }
   .resumo-num dd { margin: 2px 0 0; font: 800 1.7rem/1 var(--f-titulo), system-ui, sans-serif; font-variant-numeric: tabular-nums; }
   .resumo-num dd small { font-size: .95rem; color: #bdbdbd; }
   .calc-resumo .nota { color: #9a9a9a; margin: 10px 0 0; }
-  .calc-painel { display: flex; flex-direction: column; gap: 18px; grid-column: 2; grid-row: 1; }
+  .calc-painel { display: flex; flex-direction: column; gap: 12px; grid-column: 2; grid-row: 1; }
+  /* Lista compacta: tudo da calculadora cabe numa tela, sem rolar dentro do cartão */
+  .lista-titulo { display: none; }
+  .stepper-rotulo { margin-bottom: 2px; font-size: .82rem; }
+  .stepper-ctl { grid-template-columns: 40px 1fr 40px; }
+  .stepper-ctl button { height: 40px; }
+  .stepper-ctl output, .altura-lida output { font-size: 1.5rem; }
+  .altura-lida output { height: 40px; }
+  .grupo { padding: 10px 14px 2px; }
+  .grupo-topo { align-items: center; }
+  .grupo-topo p { margin: 1px 0 0; font-size: .8rem; }
+  .grupo-status { padding: 4px 9px; font-size: .8rem; }
+  .grupo .lista, .lista-soltos { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; }
+  .grupo .lista { margin-top: 6px; }
+  .lista li { min-height: 50px; border-bottom: 0; border-top: 1px solid var(--linha); }
+  .lista-opc { display: none !important; }
+  .lista-soltos { padding: 0 14px; border: 1.5px solid var(--linha); border-radius: 12px; }
+  .lista-soltos li:nth-child(-n+2) { border-top: 0; }
+  .lista-nome { font-size: .95rem; }
+  .lista-nome small { display: inline; margin-left: 6px; font-size: .78rem; }
+  .lista-nome small.lista-aviso { display: block; margin-left: 0; }
+  .lista-qtd button { width: 34px; height: 34px; font-size: 1.2rem; }
+  .lista-qtd b { min-width: 2.2ch; font-size: 1.3rem; }
+  .calc-extra { display: grid; gap: 10px; }
+  .chip { min-height: 40px; padding: 0 12px; }
+  .calc-contato { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .calc-contato label span { margin-bottom: 2px; font-size: .8rem; }
+  .calc-contato input { min-height: 42px; }
   .calc-steppers { grid-column: auto; grid-row: auto; }
   .so-movel { display: none; }
 
